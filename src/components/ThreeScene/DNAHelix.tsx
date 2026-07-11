@@ -1,7 +1,7 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Points, PointMaterial } from '@react-three/drei'
+import { Points, PointMaterial, Html } from '@react-three/drei'
 
 interface DNAHelixProps {
   count?: number;
@@ -25,6 +25,10 @@ const DOMAIN_COLORS: Record<string, string> = {
 }
 
 const DOMAIN_IDS = ['skills', 'experience', 'projects', 'education']
+
+// Number of full twists the double helix makes across its height in the decoded (vertical) state.
+const DECODED_TURNS = 3
+const DECODED_RADIUS = 1.8
 
 const DNAHelix: React.FC<DNAHelixProps> = ({ 
   count = 200, 
@@ -114,10 +118,12 @@ const DNAHelix: React.FC<DNAHelixProps> = ({
             const y = (t - 0.5) * height
             const z = Math.sin(angle) * rEffect
 
-            // Vertical genome Axis decoded position
-            const dX = (strand === 1 ? 0.8 : -0.8) * (1 - mix * 0.5)
+            // Vertical genome Axis decoded position — twisting double helix, not a flat ladder
+            const dAngle = t * Math.PI * 2 * DECODED_TURNS + (strand === 2 ? Math.PI : 0)
+            const dR = DECODED_RADIUS * 0.5 * (1 - mix * 0.5)
+            const dX = Math.cos(dAngle) * dR
             const dY = (t - 0.5) * (height * 1.2)
-            const dZ = 0
+            const dZ = Math.sin(dAngle) * dR
 
             pos[i * 3] = THREE.MathUtils.lerp(x, dX, mix)
             pos[i * 3 + 1] = THREE.MathUtils.lerp(y, dY, mix)
@@ -142,14 +148,28 @@ const DNAHelix: React.FC<DNAHelixProps> = ({
         />
       </Points>
 
-      {/* Sequential Scanner Beam */}
+      {/* Sequential Scanner Beam with Chromatic Aberration */}
       {isScanning && scanProgress > -0.1 && scanProgress < 1 && (
         <group position={[0, (scanProgress - 0.5) * height, 0]}>
+           {/* Red channel (aberration) */}
+           <mesh position={[0, 0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+             <ringGeometry args={[radius - 0.8, radius + 4.2, 64]} />
+             <meshBasicMaterial color="#ff0044" transparent opacity={0.3} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+           </mesh>
+           {/* Main Cyan beam */}
            <mesh rotation={[Math.PI / 2, 0, 0]}>
              <ringGeometry args={[radius - 1, radius + 4, 64]} />
-             <meshBasicMaterial color="#38bdf8" transparent opacity={0.4} side={THREE.DoubleSide} />
+             <meshBasicMaterial color="#38bdf8" transparent opacity={0.8} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
            </mesh>
-           <pointLight color="#38bdf8" intensity={5} distance={10} />
+           {/* Blue channel (aberration) */}
+           <mesh position={[0, -0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+             <ringGeometry args={[radius - 1.2, radius + 3.8, 64]} />
+             <meshBasicMaterial color="#0044ff" transparent opacity={0.3} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+           </mesh>
+
+           <pointLight color="#38bdf8" intensity={4} distance={15} />
+           <pointLight position={[0, 0.5, 0]} color="#ff0044" intensity={2} distance={10} />
+           <pointLight position={[0, -0.5, 0]} color="#0044ff" intensity={2} distance={10} />
         </group>
       )}
 
@@ -190,7 +210,7 @@ const DNAHelix: React.FC<DNAHelixProps> = ({
 }
 
 const Atom = ({ p, isDecoded, transitionProgress, radius, height, turns, hoveredNode, activeDomainId, isScanning, scanProgress, setHoveredNode, onHoverDomain, onSelectDomain, scrollProgress }: any) => {
-    const meshRef = useRef<THREE.Mesh>(null)
+    const meshRef = useRef<THREE.Group>(null)
     
     useFrame(() => {
         if (!meshRef.current) return
@@ -203,10 +223,11 @@ const Atom = ({ p, isDecoded, transitionProgress, radius, height, turns, hovered
         const hY = (t - 0.5) * height
         const hZ = Math.sin(angle) * (radius * (1 - mix * 0.4))
         
-        // Decoded Vertical axis (axis strands)
-        const dX = p.strand === 1 ? 1.5 : -1.5
+        // Decoded state — genuine twisting double helix (not a flat ladder)
+        const dAngle = t * Math.PI * 2 * DECODED_TURNS + (p.strand === 2 ? Math.PI : 0)
+        const dX = Math.cos(dAngle) * DECODED_RADIUS
         const dY = (t - 0.5) * (height * 1.2)
-        const dZ = 0
+        const dZ = Math.sin(dAngle) * DECODED_RADIUS
         
         meshRef.current.position.x = THREE.MathUtils.lerp(hX, dX, mix)
         meshRef.current.position.y = THREE.MathUtils.lerp(hY, dY, mix)
@@ -232,7 +253,7 @@ const Atom = ({ p, isDecoded, transitionProgress, radius, height, turns, hovered
     const isScanningRow = isScanning && Math.abs(p.t - scanProgress) < 0.05
 
     return (
-        <mesh 
+        <group
             ref={meshRef}
             onPointerOver={(e) => {
                 e.stopPropagation()
@@ -245,16 +266,23 @@ const Atom = ({ p, isDecoded, transitionProgress, radius, height, turns, hovered
             }}
             onClick={() => onSelectDomain?.(p.domainId)}
         >
-            <sphereGeometry args={[isHovered ? 0.6 : 0.3, 16, 16]} />
-            <meshPhongMaterial 
-                color={isScanningRow ? '#fff' : (isScanReached || isDecoded ? p.color : '#222')} 
-                emissive={isScanningRow ? '#fff' : (isScanReached || isDecoded ? p.color : '#111')} 
-                emissiveIntensity={isHovered || isScanningRow ? 8 : (isScanReached || isDecoded ? 2 : 0.2)} 
-                shininess={100}
-                transparent
-                opacity={isDecoded ? 1 : (isScanReached || isScanning ? 1 : 0.3)}
-            />
-        </mesh>
+            {/* Invisible larger hit-target so hovering the thin helix strand is forgiving */}
+            <mesh>
+                <sphereGeometry args={[0.9, 8, 8]} />
+                <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+            </mesh>
+            <mesh>
+                <sphereGeometry args={[isHovered ? 0.6 : 0.3, 16, 16]} />
+                <meshPhongMaterial
+                    color={isScanningRow ? '#fff' : (isScanReached || isDecoded ? p.color : '#222')}
+                    emissive={isScanningRow ? '#fff' : (isScanReached || isDecoded ? p.color : '#111')}
+                    emissiveIntensity={isHovered || isScanningRow ? 8 : (isScanReached || isDecoded ? 2 : 0.2)}
+                    shininess={100}
+                    transparent
+                    opacity={isDecoded ? 1 : (isScanReached || isScanning ? 1 : 0.3)}
+                />
+            </mesh>
+        </group>
     )
 }
 
@@ -275,8 +303,10 @@ const Rungs = ({ points, isDecoded, transitionProgress, radius, height, turns, a
             const hStart = new THREE.Vector3(Math.cos(angle) * (radius * (1 - mix*0.4)), (t - 0.5) * height, Math.sin(angle) * (radius * (1 - mix*0.4)))
             const hEnd = new THREE.Vector3(Math.cos(angle + Math.PI) * (radius * (1 - mix*0.4)), (t - 0.5) * height, Math.sin(angle + Math.PI) * (radius * (1 - mix*0.4)))
             
-            const dStart = new THREE.Vector3(1.5, (t - 0.5) * (height * 1.2), 0)
-            const dEnd = new THREE.Vector3(-1.5, (t - 0.5) * (height * 1.2), 0)
+            const dAngle = t * Math.PI * 2 * DECODED_TURNS
+            const dY = (t - 0.5) * (height * 1.2)
+            const dStart = new THREE.Vector3(Math.cos(dAngle) * DECODED_RADIUS, dY, Math.sin(dAngle) * DECODED_RADIUS)
+            const dEnd = new THREE.Vector3(Math.cos(dAngle + Math.PI) * DECODED_RADIUS, dY, Math.sin(dAngle + Math.PI) * DECODED_RADIUS)
             
             const start = new THREE.Vector3().lerpVectors(hStart, dStart, mix)
             const end = new THREE.Vector3().lerpVectors(hEnd, dEnd, mix)

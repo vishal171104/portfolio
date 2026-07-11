@@ -10,7 +10,7 @@
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 43 51% 54%; /* gold #c9a84c approx */
+    --primary: 199 89% 60%; /* sky blue #38bdf8 */
     --primary-foreground: 240 5.9% 10%;
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
@@ -56,4 +56,25 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.4);
+}
+
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0px); }
+  40%       { transform: translateY(-7px); }
+  70%       { transform: translateY(3px); }
+}
+
+@keyframes sceneFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-scene-fade-in {
+  animation: sceneFadeIn 1.2s ease-out both;
+}
+
+/* The CustomCursor component adds .custom-cursor to <html> on fine-pointer
+   devices; the native cursor disappears and the dot+ring pair takes over. */
+.custom-cursor,
+.custom-cursor * {
+  cursor: none !important;
 }

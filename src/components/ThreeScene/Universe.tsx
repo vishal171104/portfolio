@@ -1,7 +1,7 @@
 import React, { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Stars, Sparkles } from '@react-three/drei'
+import { Stars, Sparkles, Html } from '@react-three/drei'
 
 export const Constellations = () => {
     const pointsRef = useRef<THREE.Points>(null)
@@ -58,32 +58,96 @@ export const Constellations = () => {
     )
 }
 
-export const Nebulae = () => {
+export const Nebulae = ({ onSelectDomain }: { onSelectDomain?: (id: string) => void }) => {
+    const groupRef = useRef<THREE.Group>(null)
+    const [hovered, setHovered] = React.useState<number | null>(null)
+    const [absorbing, setAbsorbing] = React.useState<number | null>(null)
+    
     const nebulae = useMemo(() => [
-        { pos: [20, 10, -30], color: '#38bdf8', scale: 20 },
-        { pos: [-25, -15, -20], color: '#a855f7', scale: 25 },
-        { pos: [10, -25, -40], color: '#fbbf24', scale: 15 },
+        { id: 'skills', title: 'Skills Orb', pos: [20, 10, -30], color: '#38bdf8', scale: 20 },
+        { id: 'experience', title: 'Experience Orb', pos: [-25, -15, -20], color: '#a855f7', scale: 25 },
+        { id: 'projects', title: 'Projects Orb', pos: [10, -25, -40], color: '#fbbf24', scale: 15 },
+        { id: 'education', title: 'Education Orb', pos: [-5, 25, -35], color: '#22c55e', scale: 18 },
     ], [])
 
+    useFrame((state, delta) => {
+        if (groupRef.current && absorbing === null) {
+            groupRef.current.rotation.y += delta * 0.05
+        }
+    })
+
     return (
-        <group>
+        <group ref={groupRef}>
             {nebulae.map((n, i) => (
-                <mesh key={i} position={n.pos as any}>
-                    <sphereGeometry args={[n.scale, 32, 32]} />
-                    <meshBasicMaterial color={n.color} transparent opacity={0.02} side={THREE.BackSide} />
-                </mesh>
+                <Orb 
+                    key={i} 
+                    {...n} 
+                    isHovered={hovered === i}
+                    isAbsorbing={absorbing === i}
+                    othersAbsorbing={absorbing !== null && absorbing !== i}
+                    onHover={(state: boolean) => setHovered(state ? i : null)}
+                    onClick={() => {
+                        if (absorbing !== null) return
+                        setAbsorbing(i)
+                        setTimeout(() => {
+                            onSelectDomain?.(n.id)
+                            setAbsorbing(null)
+                        }, 1000)
+                    }}
+                />
             ))}
         </group>
     )
 }
 
-const Universe: React.FC = () => {
+const Orb = ({ id, title, pos, color, scale, isHovered, isAbsorbing, othersAbsorbing, onHover, onClick }: any) => {
+    const meshRef = useRef<THREE.Mesh>(null)
+    const [currentScale, setCurrentScale] = React.useState(scale)
+
+    useFrame((state, delta) => {
+        if (!meshRef.current) return
+        
+        let targetScale = scale
+        if (isAbsorbing) targetScale = 200 // Absorb screen
+        else if (othersAbsorbing) targetScale = 0
+        else if (isHovered) targetScale = scale * 1.5 // Swell on hover
+
+        meshRef.current.scale.lerp(new THREE.Vector3(targetScale/scale, targetScale/scale, targetScale/scale), 0.05)
+        
+        if (!isAbsorbing) {
+             meshRef.current.position.y += Math.sin(state.clock.elapsedTime + pos[0]) * 0.02
+        }
+    })
+
+    return (
+        <mesh 
+            ref={meshRef} 
+            position={pos as any}
+            onPointerOver={(e) => { e.stopPropagation(); onHover(true) }}
+            onPointerOut={(e) => { e.stopPropagation(); onHover(false) }}
+            onClick={(e) => { e.stopPropagation(); onClick() }}
+        >
+            <sphereGeometry args={[scale, 32, 32]} />
+            <meshBasicMaterial color={color} transparent opacity={isAbsorbing ? 0.8 : (isHovered ? 0.4 : 0.1)} side={THREE.BackSide} />
+            
+            {!isAbsorbing && !othersAbsorbing && (
+                <Html center distanceFactor={15}>
+                    <div className={`p-4 rounded-full backdrop-blur-md border transition-all ${isHovered ? 'bg-white/10 opacity-100' : 'bg-transparent border-transparent opacity-50'}`} style={{ borderColor: isHovered ? color : 'transparent' }}>
+                        <p className="text-xl font-black uppercase tracking-widest text-white/80">{title}</p>
+                    </div>
+                </Html>
+            )}
+        </mesh>
+    )
+}
+
+const Universe: React.FC<{ onSelectDomain?: (id: string) => void }> = ({ onSelectDomain }) => {
   return (
     <>
         <Stars radius={150} depth={50} count={6000} factor={4} saturation={0} fade speed={0.5} />
         <Sparkles count={300} size={2} speed={0.3} opacity={0.1} scale={50} color="#38bdf8" />
         <Constellations />
-        <Nebulae />
+        <Nebulae onSelectDomain={onSelectDomain} />
     </>
   )
 }
