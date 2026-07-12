@@ -114,14 +114,44 @@ function useProximity(scroll: ScrollState, index: number, chapters: number) {
   return value;
 }
 
-// ── SKILLS: molecule — icosa core, portal ring, chips on a carousel ──────────
+// Giant headline floating where the journey begins — the first thing seen.
+const IntroHeadline = ({ curve, text, accent }: { curve: THREE.CatmullRomCurve3; text: string; accent: string }) => {
+  const pos = useMemo(() => {
+    const p = curve.getPoint(0);
+    const tan = curve.getTangent(0).normalize();
+    // High and slightly ahead — clears the first station's own signage
+    return p.clone().addScaledVector(tan, 8).add(new THREE.Vector3(0, 14.5, 0));
+  }, [curve]);
+  return (
+    <Suspense fallback={null}>
+      <Text position={pos} fontSize={2.4} color={accent} anchorX="center" anchorY="middle" font={FONT_BOLD} maxWidth={26} textAlign="center" letterSpacing={0.12}>
+        {text}
+        <meshBasicMaterial color={accent} toneMapped={false} transparent opacity={0.85} />
+      </Text>
+    </Suspense>
+  );
+};
+
+// ── SKILLS: neuron — icosa soma, portal ring, chips wired to the core by
+// glowing synapses that brighten as the station activates ───────────────────
 const MoleculeStation = ({ position, accent, title, chips, index, scroll, chapters }: StationProps) => {
   const group = useRef<THREE.Group>(null);
   const ring = useRef<THREE.Mesh>(null);
   const core = useRef<THREE.Mesh>(null);
   const light = useRef<THREE.PointLight>(null);
   const chipsGroup = useRef<THREE.Group>(null);
+  const synapseMat = useRef<THREE.LineBasicMaterial>(null);
   const prox = useProximity(scroll, index, chapters);
+
+  // Line pairs from the soma to each chip — the skill graph made literal
+  const synapses = useMemo(() => {
+    const pts: number[] = [];
+    chips.forEach((_, ci) => {
+      const a = (ci / chips.length) * Math.PI * 2;
+      pts.push(0, 0, 0, Math.cos(a) * 4.4, -0.4 + Math.sin(ci * 1.7) * 0.9, Math.sin(a) * 4.4);
+    });
+    return new Float32Array(pts);
+  }, [chips]);
 
   useFrame((state) => {
     const p = prox.current;
@@ -141,6 +171,7 @@ const MoleculeStation = ({ position, accent, title, chips, index, scroll, chapte
       chipsGroup.current.rotation.y = tm * 0.22;
       chipsGroup.current.visible = p > 0.05;
     }
+    if (synapseMat.current) synapseMat.current.opacity = 0.1 + p * 0.55;
     if (group.current) group.current.position.y = position.y + Math.sin(tm * 0.9 + index * 2) * 0.35;
   });
 
@@ -161,6 +192,11 @@ const MoleculeStation = ({ position, accent, title, chips, index, scroll, chapte
           <meshBasicMaterial color="#ffffff" toneMapped={false} />
         </Text>
         <group ref={chipsGroup}>
+          {/* synapses rotate with the chips they feed */}
+          <lineSegments>
+            <bufferGeometry><bufferAttribute attach="attributes-position" args={[synapses, 3]} /></bufferGeometry>
+            <lineBasicMaterial ref={synapseMat} color={accent} transparent opacity={0.1} toneMapped={false} />
+          </lineSegments>
           {chips.map((chip, ci) => {
             const a = (ci / chips.length) * Math.PI * 2;
             return (
@@ -177,7 +213,7 @@ const MoleculeStation = ({ position, accent, title, chips, index, scroll, chapte
 };
 
 // ── EXPERIENCE: portal gate — a frame you fly through, year on the lintel ───
-const GateStation = ({ position, accent, title, kicker, chips, index, scroll, chapters, facing }: StationProps) => {
+const GateStation = ({ position, accent, title, kicker, place, chips, index, scroll, chapters, facing }: StationProps) => {
   const group = useRef<THREE.Group>(null);
   const frameMat = useRef<THREE.MeshStandardMaterial>(null);
   const light = useRef<THREE.PointLight>(null);
@@ -212,14 +248,21 @@ const GateStation = ({ position, accent, title, kicker, chips, index, scroll, ch
       ))}
       <pointLight ref={light} color={accent} intensity={0} distance={45} decay={2} />
       <Suspense fallback={null}>
-        {/* Big year stamped on the lintel */}
-        <Text position={[0, 7.6, 0]} fontSize={2.1} color={accent} anchorX="center" anchorY="bottom" font={FONT_BOLD}>
+        {/* Big year floating above, company stamped on the lintel like a
+            station sign, role beneath it — reads like arriving somewhere. */}
+        <Text position={[0, 8.6, 0]} fontSize={2.1} color={accent} anchorX="center" anchorY="bottom" font={FONT_BOLD}>
           {year}
           <meshBasicMaterial color={accent} toneMapped={false} />
         </Text>
-        <Text position={[0, 6.9, 0.5]} fontSize={0.62} color="#ffffff" anchorX="center" anchorY="bottom" font={FONT_REG} maxWidth={14} textAlign="center">
+        {place && (
+          <Text position={[0, 6.75, 0.4]} fontSize={0.95} color="#ffffff" anchorX="center" anchorY="bottom" font={FONT_BOLD} letterSpacing={0.15}>
+            {place}
+            <meshBasicMaterial color="#ffffff" toneMapped={false} />
+          </Text>
+        )}
+        <Text position={[0, 5.1, 0.4]} fontSize={0.55} color={accent} anchorX="center" anchorY="bottom" font={FONT_REG} maxWidth={14} textAlign="center">
           {title}
-          <meshBasicMaterial color="#ffffff" toneMapped={false} />
+          <meshBasicMaterial color={accent} toneMapped={false} />
         </Text>
         {/* tech stamped along the pillars */}
         {chips.slice(0, 3).map((chip, ci) => (
@@ -233,8 +276,58 @@ const GateStation = ({ position, accent, title, kicker, chips, index, scroll, ch
   );
 };
 
+// Primitive totems — instantly readable symbols of what each project IS.
+const ProjectTotem = ({ kind, accent }: { kind?: string; accent: string }) => {
+  const group = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (group.current) {
+      group.current.rotation.y = state.clock.getElapsedTime() * 0.5;
+      group.current.position.y = 6.6 + Math.sin(state.clock.getElapsedTime() * 1.1) * 0.25;
+    }
+  });
+  const mat = <meshStandardMaterial color="#0d0a04" emissive={accent} emissiveIntensity={1.3} roughness={0.35} metalness={0.5} />;
+  return (
+    <group ref={group} position={[0, 6.6, 0]}>
+      {kind === 'cards' && ( // classifier: three tickets fanned into sorted stacks
+        <group>
+          {[-0.9, 0, 0.9].map((x, i) => (
+            <mesh key={i} position={[x, i * 0.12, i * -0.12]} rotation={[0, 0, (i - 1) * 0.35]}>
+              <boxGeometry args={[1.15, 1.7, 0.06]} />
+              {mat}
+            </mesh>
+          ))}
+        </group>
+      )}
+      {kind === 'dumbbell' && ( // RankGym: the most honest gym icon there is
+        <group rotation={[0, 0, Math.PI / 14]}>
+          <mesh rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.14, 0.14, 2.6, 12]} />{mat}</mesh>
+          <mesh position={[-1.3, 0, 0]}><sphereGeometry args={[0.52, 16, 16]} />{mat}</mesh>
+          <mesh position={[1.3, 0, 0]}><sphereGeometry args={[0.52, 16, 16]} />{mat}</mesh>
+        </group>
+      )}
+      {kind === 'crates' && ( // MaligaiKadai: stocked inventory crates
+        <group>
+          <mesh position={[-0.55, -0.5, 0]}><boxGeometry args={[1, 1, 1]} />{mat}</mesh>
+          <mesh position={[0.6, -0.5, 0.15]}><boxGeometry args={[1, 1, 1]} />{mat}</mesh>
+          <mesh position={[0, 0.55, 0.05]} rotation={[0, 0.5, 0]}><boxGeometry args={[1, 1, 1]} />{mat}</mesh>
+        </group>
+      )}
+      {kind === 'pin' && ( // Vehicle Tracking: a live map pin
+        <group>
+          <mesh position={[0, 0.45, 0]} rotation={[Math.PI, 0, 0]}><coneGeometry args={[0.55, 1.5, 20]} />{mat}</mesh>
+          <mesh position={[0, 1.2, 0]}><sphereGeometry args={[0.55, 18, 18]} />{mat}</mesh>
+          <mesh position={[0, -0.6, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.7, 0.85, 24]} />
+            <meshBasicMaterial color={accent} transparent opacity={0.5} toneMapped={false} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      )}
+    </group>
+  );
+};
+
 // ── PROJECTS: monolith slab — a standing stone with the blueprint on it ─────
-const MonolithStation = ({ position, accent, title, chips, metric, index, scroll, chapters, facing }: StationProps) => {
+const MonolithStation = ({ position, accent, title, chips, metric, sculpture, index, scroll, chapters, facing }: StationProps) => {
   const group = useRef<THREE.Group>(null);
   const faceMat = useRef<THREE.MeshBasicMaterial>(null);
   const slabMat = useRef<THREE.MeshStandardMaterial>(null);
@@ -270,6 +363,7 @@ const MonolithStation = ({ position, accent, title, chips, metric, index, scroll
         <meshBasicMaterial ref={faceMat} color={accent} transparent opacity={0.05} toneMapped={false} />
       </mesh>
       <pointLight ref={light} color={accent} intensity={0} distance={42} decay={2} position={[0, 0, 4]} />
+      <ProjectTotem kind={sculpture} accent={accent} />
       <Suspense fallback={null}>
         <Text position={[0, 2.9, 0.35]} fontSize={0.78} color="#ffffff" anchorX="center" anchorY="middle" font={FONT_BOLD} maxWidth={5.6} textAlign="center">
           {title}
@@ -291,15 +385,17 @@ const MonolithStation = ({ position, accent, title, chips, metric, index, scroll
   );
 };
 
-// ── EDUCATION: gyroscope — nested rings spinning on different axes ──────────
-const GyroStation = ({ position, accent, title, chips, index, scroll, chapters }: StationProps) => {
+// ── EDUCATION: gyroscope of learning — nested rings around an OPEN BOOK; the
+// final station wears the graduation cap ─────────────────────────────────────
+const GyroStation = ({ position, accent, title, chips, index, scroll, chapters, isLast }: StationProps) => {
   const group = useRef<THREE.Group>(null);
   const r1 = useRef<THREE.Mesh>(null);
   const r2 = useRef<THREE.Mesh>(null);
   const r3 = useRef<THREE.Mesh>(null);
-  const core = useRef<THREE.Mesh>(null);
+  const book = useRef<THREE.Group>(null);
   const light = useRef<THREE.PointLight>(null);
   const chipsGroup = useRef<THREE.Group>(null);
+  const capGroup = useRef<THREE.Group>(null);
   const prox = useProximity(scroll, index, chapters);
 
   useFrame((state) => {
@@ -308,7 +404,17 @@ const GyroStation = ({ position, accent, title, chips, index, scroll, chapters }
     if (r1.current) { r1.current.rotation.x = tm * 0.5; (r1.current.material as THREE.MeshBasicMaterial).opacity = 0.2 + p * 0.8; }
     if (r2.current) { r2.current.rotation.y = tm * 0.65; r2.current.rotation.z = Math.PI / 3; (r2.current.material as THREE.MeshBasicMaterial).opacity = 0.2 + p * 0.65; }
     if (r3.current) { r3.current.rotation.z = tm * 0.4; r3.current.rotation.x = Math.PI / 2.4; (r3.current.material as THREE.MeshBasicMaterial).opacity = 0.2 + p * 0.5; }
-    if (core.current) (core.current.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.5 + p * 3;
+    if (book.current) {
+      book.current.rotation.y = tm * 0.45;
+      book.current.children.forEach((half) => {
+        const m = (half as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (m?.emissiveIntensity !== undefined) m.emissiveIntensity = 0.5 + p * 2.2;
+      });
+    }
+    if (capGroup.current) {
+      capGroup.current.rotation.y = -tm * 0.35;
+      capGroup.current.position.y = 8.9 + Math.sin(tm * 1.2) * 0.25;
+    }
     if (light.current) light.current.intensity = p * 65;
     if (chipsGroup.current) {
       chipsGroup.current.rotation.y = -tm * 0.18;
@@ -322,10 +428,25 @@ const GyroStation = ({ position, accent, title, chips, index, scroll, chapters }
       <mesh ref={r1}><torusGeometry args={[5.4, 0.06, 10, 80]} /><meshBasicMaterial color={accent} transparent opacity={0.25} toneMapped={false} /></mesh>
       <mesh ref={r2}><torusGeometry args={[4.3, 0.06, 10, 80]} /><meshBasicMaterial color={accent} transparent opacity={0.25} toneMapped={false} /></mesh>
       <mesh ref={r3}><torusGeometry args={[3.2, 0.06, 10, 80]} /><meshBasicMaterial color="#ffffff" transparent opacity={0.2} toneMapped={false} /></mesh>
-      <mesh ref={core}>
-        <sphereGeometry args={[1.1, 24, 24]} />
-        <meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={0.5} roughness={0.3} />
-      </mesh>
+      {/* open book: two pages meeting at the spine */}
+      <group ref={book}>
+        <mesh position={[-0.62, 0, 0]} rotation={[0, 0, 0.42]}>
+          <boxGeometry args={[1.3, 0.08, 1.7]} />
+          <meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={0.5} roughness={0.4} />
+        </mesh>
+        <mesh position={[0.62, 0, 0]} rotation={[0, 0, -0.42]}>
+          <boxGeometry args={[1.3, 0.08, 1.7]} />
+          <meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={0.5} roughness={0.4} />
+        </mesh>
+      </group>
+      {/* the graduation cap crowns the final chapter */}
+      {isLast && (
+        <group ref={capGroup} position={[0, 8.9, 0]}>
+          <mesh><boxGeometry args={[2.1, 0.12, 2.1]} /><meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={1.2} roughness={0.4} /></mesh>
+          <mesh position={[0, -0.4, 0]}><boxGeometry args={[0.95, 0.7, 0.95]} /><meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={0.8} roughness={0.4} /></mesh>
+          <mesh position={[0.9, -0.45, 0.9]}><sphereGeometry args={[0.14, 10, 10]} /><meshBasicMaterial color={accent} toneMapped={false} /></mesh>
+        </group>
+      )}
       <pointLight ref={light} color={accent} intensity={0} distance={42} decay={2} />
       <Suspense fallback={null}>
         <Text position={[0, 7.2, 0]} fontSize={1.05} color="#ffffff" anchorX="center" anchorY="bottom" font={FONT_BOLD} maxWidth={17} textAlign="center">
@@ -354,6 +475,9 @@ interface StationProps {
   title: string;
   kicker?: string;
   metric?: string;
+  place?: string;
+  sculpture?: string;
+  isLast?: boolean;
   chips: string[];
   index: number;
   scroll: ScrollState;
@@ -407,6 +531,45 @@ const MetroGrid = ({ accent, minY }: { accent: string; minY: number }) => (
     <gridHelper args={[520, 52, accent, '#131018']} />
   </group>
 );
+
+// experience: the career road itself — two dotted edge lines flanking the
+// path plus milepost columns, so the journey reads as a travelled road.
+const CareerRoad = ({ curve, accent }: { curve: THREE.CatmullRomCurve3; accent: string }) => {
+  const [left, right, posts] = useMemo(() => {
+    const n = 240;
+    const l = new Float32Array(n * 3);
+    const r = new Float32Array(n * 3);
+    const postList: THREE.Vector3[] = [];
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const p = curve.getPoint(t);
+      const tan = curve.getTangent(t).normalize();
+      const side = new THREE.Vector3().crossVectors(tan, UP).normalize();
+      const lo = p.clone().addScaledVector(side, -2.6);
+      const ro = p.clone().addScaledVector(side, 2.6);
+      l.set([lo.x, lo.y - 1.2, lo.z], i * 3);
+      r.set([ro.x, ro.y - 1.2, ro.z], i * 3);
+      if (i % 24 === 12) postList.push(p.clone().addScaledVector(side, i % 48 === 12 ? 4.2 : -4.2));
+    }
+    return [l, r, postList];
+  }, [curve]);
+  return (
+    <group>
+      {[left, right].map((arr, i) => (
+        <points key={i}>
+          <bufferGeometry><bufferAttribute attach="attributes-position" args={[arr, 3]} /></bufferGeometry>
+          <pointsMaterial color={accent} size={0.16} transparent opacity={0.55} sizeAttenuation />
+        </points>
+      ))}
+      {posts.map((p, i) => (
+        <mesh key={i} position={[p.x, p.y - 0.4, p.z]}>
+          <boxGeometry args={[0.16, 1.5, 0.16]} />
+          <meshStandardMaterial color="#0b0714" emissive={accent} emissiveIntensity={0.5} roughness={0.6} />
+        </mesh>
+      ))}
+    </group>
+  );
+};
 
 // projects: rows of dim pillars flanking the corridor
 const GalleryPillars = ({ curve, accent }: { curve: THREE.CatmullRomCurve3; accent: string }) => {
@@ -603,9 +766,15 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
 
         {/* Domain-specific world */}
         {config.id === 'skills' && <DnaRibbon curve={curve} accent={config.accent} />}
-        {config.id === 'experience' && <MetroGrid accent={config.accent} minY={waypoints[N - 1].y} />}
+        {config.id === 'experience' && (
+          <>
+            <MetroGrid accent={config.accent} minY={waypoints[N - 1].y} />
+            <CareerRoad curve={curve} accent={config.accent} />
+          </>
+        )}
         {config.id === 'projects' && <GalleryPillars curve={curve} accent={config.accent} />}
         {config.id === 'education' && <GravityWell accent={config.accent} end={waypoints[N - 1]} />}
+        <IntroHeadline curve={curve} text={config.intro} accent={config.accent} />
 
         {chapters.map((ch, i) => (
           <Station
@@ -615,6 +784,9 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
             title={ch.title}
             kicker={ch.kicker}
             metric={ch.metric}
+            place={ch.place}
+            sculpture={ch.sculpture}
+            isLast={i === N - 1}
             chips={ch.chips}
             index={i}
             scroll={scroll}
