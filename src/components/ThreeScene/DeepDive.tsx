@@ -8,12 +8,15 @@ import * as THREE from 'three';
 import { DEEP_DIVES, DIVE_ORDER, DiveConfig } from '../../data/deep_dives';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Scroll-driven cinematic, one per domain — and each domain is a DIFFERENT
-// place, not a recolor:
-//   skills      → molecule stations spiralling DOWN a DNA ribbon
-//   experience  → portal gates you fly through over a metro grid
-//   projects    → monolith slabs in a descending gallery corridor
-//   education   → gyroscope rings sinking into a glowing core
+// Scroll-driven cinematic, one per domain — travelled from INSIDE the DNA.
+// The camera flies down the axis of a double helix: two sugar-phosphate
+// backbones spiral around you (offset asymmetrically, like real B-DNA's major
+// and minor grooves), base-pair rungs in textbook A-T / G-C colours sweep
+// past, and at every chapter the strands bulge apart into a "replication
+// bubble" — the genome literally opening so a part of it can be read.
+// Inside each bubble the domain keeps its own station:
+//   skills → neuron with synapsed chips · experience → company gates
+//   projects → monoliths + totems · education → open book in gyro rings
 // All paths descend: scrolling down travels DOWN, like any website.
 // Scroll state is per-mount (no module globals) and drives camera + HTML in
 // the same rAF so the two layers can never drift apart.
@@ -23,6 +26,7 @@ interface ScrollState { target: number; current: number }
 
 const SCROLL_PER_CHAPTER = 1200;
 const UP = new THREE.Vector3(0, 1, 0);
+const ORIGIN = new THREE.Vector3(0, 0, 0);
 
 const FONT_BOLD = '/fonts/JetBrainsMono-Bold.ttf';
 const FONT_REG = '/fonts/JetBrainsMono-Regular.ttf';
@@ -53,13 +57,175 @@ function buildWaypoints(kind: DiveConfig['path'], n: number): THREE.Vector3[] {
   return pts;
 }
 
-// Camera framing differs per world: gates are flown THROUGH nearly head-on,
-// monoliths are viewed from the corridor, spirals from slightly outside.
+// The camera rides INSIDE the helix, close to the axis — a slight side/up
+// offset keeps the composition off-centre while stations stay in frame.
 const CAM_OFFSET: Record<DiveConfig['path'], { back: number; side: number; up: number }> = {
-  helix: { back: 10, side: 4.5, up: 3.0 },
-  road: { back: 12, side: 1.4, up: 2.4 },
-  zigzag: { back: 11, side: 5.0, up: 2.0 },
-  orbit: { back: 11, side: 4.0, up: 3.5 },
+  helix: { back: 9, side: 1.8, up: 1.2 },
+  road: { back: 10, side: 1.6, up: 1.4 },
+  zigzag: { back: 10, side: 2.0, up: 1.2 },
+  orbit: { back: 9, side: 1.8, up: 1.4 },
+};
+
+// ── THE TUNNEL: inside the double helix ──────────────────────────────────────
+// Textbook base colours: adenine/thymine and guanine/cytosine pairs.
+const BASE_COLORS: Record<string, THREE.Color> = {
+  A: new THREE.Color('#4f9dff'),
+  T: new THREE.Color('#ffd24f'),
+  G: new THREE.Color('#4fff88'),
+  C: new THREE.Color('#ff5f6b'),
+};
+const BASE_PAIRS: Array<[keyof typeof BASE_COLORS, keyof typeof BASE_COLORS]> =
+  [['A', 'T'], ['T', 'A'], ['G', 'C'], ['C', 'G']];
+
+const TUNNEL_RADIUS = 9;
+// Real B-DNA strands are not 180° apart — the ~2.2 rad offset carves the
+// asymmetric major/minor grooves you see in every structure render.
+const GROOVE_OFFSET = 2.2;
+
+// Perpendicular frame at t, stable for our mostly-nonvertical paths.
+function frameAt(curve: THREE.CatmullRomCurve3, t: number) {
+  const tan = curve.getTangent(t).normalize();
+  let side = new THREE.Vector3().crossVectors(tan, UP);
+  if (side.lengthSq() < 1e-4) side = new THREE.Vector3(1, 0, 0);
+  side.normalize();
+  const up2 = new THREE.Vector3().crossVectors(side, tan).normalize();
+  return { tan, side, up2 };
+}
+
+// Replication-bubble factor: 1 away from stations, up to ~1.95 at them.
+function bulgeAt(t: number, stationTs: number[]) {
+  let b = 0;
+  for (const st of stationTs) {
+    const d = (t - st) / 0.055;
+    b = Math.max(b, Math.exp(-d * d));
+  }
+  return 1 + b * 0.95;
+}
+
+const HelixTunnel = ({ curve, accent, stationTs }: {
+  curve: THREE.CatmullRomCurve3; accent: string; stationTs: number[];
+}) => {
+  const beadsRef = useRef<THREE.InstancedMesh>(null);
+  const rungARef = useRef<THREE.InstancedMesh>(null);
+  const rungBRef = useRef<THREE.InstancedMesh>(null);
+
+  const { beadCount, beadMatrices, rungs, letters, turns } = useMemo(() => {
+    const SEG = 440;
+    const turns = 9 + stationTs.length; // more chapters, more twist
+    const dummy = new THREE.Object3D();
+    const beadMatrices: THREE.Matrix4[] = [];
+    const strandPts: [THREE.Vector3, THREE.Vector3][] = [];
+
+    for (let i = 0; i < SEG; i++) {
+      const t = i / (SEG - 1);
+      const { side, up2 } = frameAt(curve, t);
+      const center = curve.getPoint(t);
+      const r = TUNNEL_RADIUS * bulgeAt(t, stationTs);
+      const th = t * turns * Math.PI * 2;
+      const pA = center.clone()
+        .addScaledVector(side, Math.cos(th) * r)
+        .addScaledVector(up2, Math.sin(th) * r);
+      const pB = center.clone()
+        .addScaledVector(side, Math.cos(th + GROOVE_OFFSET) * r)
+        .addScaledVector(up2, Math.sin(th + GROOVE_OFFSET) * r);
+      strandPts.push([pA, pB]);
+      for (const p of [pA, pB]) {
+        dummy.position.copy(p);
+        dummy.scale.setScalar(0.55);
+        dummy.updateMatrix();
+        beadMatrices.push(dummy.matrix.clone());
+      }
+    }
+
+    // Base-pair rungs: two coloured halves meeting mid-tunnel. Skipped near
+    // stations — that's the open bubble where the content lives.
+    const rungs: { mA: THREE.Matrix4; mB: THREE.Matrix4; cA: THREE.Color; cB: THREE.Color }[] = [];
+    const STEP = 6;
+    for (let i = 0; i < SEG; i += STEP) {
+      const t = i / (SEG - 1);
+      if (stationTs.some((st) => Math.abs(t - st) < 0.05)) continue;
+      const [pA, pB] = strandPts[i];
+      const mid = pA.clone().add(pB).multiplyScalar(0.5);
+      const pair = BASE_PAIRS[(i / STEP + Math.floor(i * 0.37)) % 4];
+      const make = (from: THREE.Vector3, to: THREE.Vector3) => {
+        const dir = to.clone().sub(from);
+        const len = dir.length();
+        dummy.position.copy(from.clone().add(to).multiplyScalar(0.5));
+        dummy.quaternion.setFromUnitVectors(UP, dir.normalize());
+        dummy.scale.set(1, len, 1);
+        dummy.updateMatrix();
+        return dummy.matrix.clone();
+      };
+      rungs.push({
+        mA: make(pA, mid), mB: make(mid, pB),
+        cA: BASE_COLORS[pair[0]], cB: BASE_COLORS[pair[1]],
+      });
+    }
+
+    // Loose nucleotide letters drifting through the tunnel
+    const letters: { pos: THREE.Vector3; ch: string; color: string }[] = [];
+    for (let i = 0; i < 26; i++) {
+      const t = Math.random();
+      const { side, up2 } = frameAt(curve, t);
+      const a = Math.random() * Math.PI * 2;
+      const rr = 3 + Math.random() * 4;
+      const ch = 'ATGC'[Math.floor(Math.random() * 4)];
+      letters.push({
+        pos: curve.getPoint(t)
+          .addScaledVector(side, Math.cos(a) * rr)
+          .addScaledVector(up2, Math.sin(a) * rr),
+        ch,
+        color: '#' + BASE_COLORS[ch as keyof typeof BASE_COLORS].getHexString(),
+      });
+    }
+
+    return { beadCount: beadMatrices.length, beadMatrices, rungs, letters, turns };
+  }, [curve, stationTs]);
+
+  useEffect(() => {
+    if (beadsRef.current) {
+      beadMatrices.forEach((m, i) => beadsRef.current!.setMatrixAt(i, m));
+      beadsRef.current.instanceMatrix.needsUpdate = true;
+    }
+    const fill = (mesh: THREE.InstancedMesh | null, key: 'mA' | 'mB', ckey: 'cA' | 'cB') => {
+      if (!mesh) return;
+      rungs.forEach((r, i) => {
+        mesh.setMatrixAt(i, r[key]);
+        mesh.setColorAt(i, r[ckey]);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    };
+    fill(rungARef.current, 'mA', 'cA');
+    fill(rungBRef.current, 'mB', 'cB');
+  }, [beadMatrices, rungs]);
+
+  return (
+    <group>
+      {/* twin sugar-phosphate backbones */}
+      <instancedMesh ref={beadsRef} args={[undefined, undefined, beadCount]} frustumCulled={false}>
+        <sphereGeometry args={[1, 10, 10]} />
+        <meshStandardMaterial color="#0a0c16" emissive={accent} emissiveIntensity={0.55} roughness={0.35} metalness={0.4} />
+      </instancedMesh>
+      {/* base-pair rungs, one instanced mesh per colour half */}
+      <instancedMesh ref={rungARef} args={[undefined, undefined, rungs.length]} frustumCulled={false}>
+        <cylinderGeometry args={[0.24, 0.24, 1, 8]} />
+        <meshBasicMaterial toneMapped={false} transparent opacity={0.85} />
+      </instancedMesh>
+      <instancedMesh ref={rungBRef} args={[undefined, undefined, rungs.length]} frustumCulled={false}>
+        <cylinderGeometry args={[0.24, 0.24, 1, 8]} />
+        <meshBasicMaterial toneMapped={false} transparent opacity={0.85} />
+      </instancedMesh>
+      {/* stray nucleotides */}
+      <Suspense fallback={null}>
+        {letters.map((l, i) => (
+          <Text key={i} position={l.pos} fontSize={0.55} color={l.color} anchorX="center" anchorY="middle" font={FONT_BOLD} fillOpacity={0.55}>
+            {l.ch}
+          </Text>
+        ))}
+      </Suspense>
+    </group>
+  );
 };
 
 // Dwell briefly at each station: settle, read, release.
@@ -119,12 +285,12 @@ const IntroHeadline = ({ curve, text, accent }: { curve: THREE.CatmullRomCurve3;
   const pos = useMemo(() => {
     const p = curve.getPoint(0);
     const tan = curve.getTangent(0).normalize();
-    // High and slightly ahead — clears the first station's own signage
-    return p.clone().addScaledVector(tan, 8).add(new THREE.Vector3(0, 14.5, 0));
+    // Floats in the upper half of the tunnel mouth, ahead of the first bubble
+    return p.clone().addScaledVector(tan, 7).add(new THREE.Vector3(0, 9.5, 0));
   }, [curve]);
   return (
     <Suspense fallback={null}>
-      <Text position={pos} fontSize={2.4} color={accent} anchorX="center" anchorY="middle" font={FONT_BOLD} maxWidth={26} textAlign="center" letterSpacing={0.12}>
+      <Text position={pos} fontSize={1.7} color={accent} anchorX="center" anchorY="middle" font={FONT_BOLD} maxWidth={15} textAlign="center" letterSpacing={0.12}>
         {text}
         <meshBasicMaterial color={accent} toneMapped={false} transparent opacity={0.85} />
       </Text>
@@ -492,125 +658,9 @@ const STATION_BY_DOMAIN: Record<string, React.FC<StationProps>> = {
   education: GyroStation,
 };
 
-// ── Per-domain environments ──────────────────────────────────────────────────
-
-// skills: two point-strands winding around the camera path — the DNA ribbon
-const DnaRibbon = ({ curve, accent }: { curve: THREE.CatmullRomCurve3; accent: string }) => {
-  const [a, b] = useMemo(() => {
-    const n = 360;
-    const s1 = new Float32Array(n * 3);
-    const s2 = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-      const t = i / (n - 1);
-      const p = curve.getPoint(t);
-      const tan = curve.getTangent(t).normalize();
-      const side = new THREE.Vector3().crossVectors(tan, UP).normalize();
-      const up = new THREE.Vector3().crossVectors(side, tan).normalize();
-      const ang = t * Math.PI * 14;
-      const o1 = side.clone().multiplyScalar(Math.cos(ang) * 7).addScaledVector(up, Math.sin(ang) * 7);
-      s1.set([p.x + o1.x, p.y + o1.y, p.z + o1.z], i * 3);
-      s2.set([p.x - o1.x, p.y - o1.y, p.z - o1.z], i * 3);
-    }
-    return [s1, s2];
-  }, [curve]);
-  return (
-    <>
-      {[a, b].map((arr, i) => (
-        <points key={i}>
-          <bufferGeometry><bufferAttribute attach="attributes-position" args={[arr, 3]} /></bufferGeometry>
-          <pointsMaterial color={i === 0 ? accent : '#ffffff'} size={0.22} transparent opacity={i === 0 ? 0.7 : 0.35} sizeAttenuation />
-        </points>
-      ))}
-    </>
-  );
-};
-
-// experience: endless metro grid below the highway
-const MetroGrid = ({ accent, minY }: { accent: string; minY: number }) => (
-  <group position={[0, minY - 10, -40]}>
-    <gridHelper args={[520, 52, accent, '#131018']} />
-  </group>
-);
-
-// experience: the career road itself — two dotted edge lines flanking the
-// path plus milepost columns, so the journey reads as a travelled road.
-const CareerRoad = ({ curve, accent }: { curve: THREE.CatmullRomCurve3; accent: string }) => {
-  const [left, right, posts] = useMemo(() => {
-    const n = 240;
-    const l = new Float32Array(n * 3);
-    const r = new Float32Array(n * 3);
-    const postList: THREE.Vector3[] = [];
-    for (let i = 0; i < n; i++) {
-      const t = i / (n - 1);
-      const p = curve.getPoint(t);
-      const tan = curve.getTangent(t).normalize();
-      const side = new THREE.Vector3().crossVectors(tan, UP).normalize();
-      const lo = p.clone().addScaledVector(side, -2.6);
-      const ro = p.clone().addScaledVector(side, 2.6);
-      l.set([lo.x, lo.y - 1.2, lo.z], i * 3);
-      r.set([ro.x, ro.y - 1.2, ro.z], i * 3);
-      if (i % 24 === 12) postList.push(p.clone().addScaledVector(side, i % 48 === 12 ? 4.2 : -4.2));
-    }
-    return [l, r, postList];
-  }, [curve]);
-  return (
-    <group>
-      {[left, right].map((arr, i) => (
-        <points key={i}>
-          <bufferGeometry><bufferAttribute attach="attributes-position" args={[arr, 3]} /></bufferGeometry>
-          <pointsMaterial color={accent} size={0.16} transparent opacity={0.55} sizeAttenuation />
-        </points>
-      ))}
-      {posts.map((p, i) => (
-        <mesh key={i} position={[p.x, p.y - 0.4, p.z]}>
-          <boxGeometry args={[0.16, 1.5, 0.16]} />
-          <meshStandardMaterial color="#0b0714" emissive={accent} emissiveIntensity={0.5} roughness={0.6} />
-        </mesh>
-      ))}
-    </group>
-  );
-};
-
-// projects: rows of dim pillars flanking the corridor
-const GalleryPillars = ({ curve, accent }: { curve: THREE.CatmullRomCurve3; accent: string }) => {
-  const pillars = useMemo(() => {
-    const out: { pos: THREE.Vector3; h: number }[] = [];
-    for (let i = 0; i < 26; i++) {
-      const t = i / 25;
-      const p = curve.getPoint(t);
-      const tan = curve.getTangent(t).normalize();
-      const side = new THREE.Vector3().crossVectors(tan, UP).normalize();
-      const w = 20 + (i % 3) * 4;
-      out.push({ pos: p.clone().addScaledVector(side, w), h: 14 + (i % 4) * 5 });
-      out.push({ pos: p.clone().addScaledVector(side, -w), h: 16 + (i % 3) * 6 });
-    }
-    return out;
-  }, [curve]);
-  return (
-    <group>
-      {pillars.map((pl, i) => (
-        <mesh key={i} position={[pl.pos.x, pl.pos.y - 2, pl.pos.z]}>
-          <boxGeometry args={[1.1, pl.h, 1.1]} />
-          <meshStandardMaterial color="#0a0803" emissive={accent} emissiveIntensity={0.08} roughness={0.8} />
-        </mesh>
-      ))}
-    </group>
-  );
-};
-
-// education: the well — an enclosing shell and the molten core waiting below
-const GravityWell = ({ accent, end }: { accent: string; end: THREE.Vector3 }) => (
-  <group>
-    <mesh>
-      <sphereGeometry args={[150, 24, 24]} />
-      <meshBasicMaterial color={accent} transparent opacity={0.05} side={THREE.BackSide} />
-    </mesh>
-    <mesh position={[end.x, end.y - 45, end.z]}>
-      <sphereGeometry args={[24, 32, 32]} />
-      <meshStandardMaterial color="#031007" emissive={accent} emissiveIntensity={1.6} roughness={0.6} />
-    </mesh>
-  </group>
-);
+// (Former per-domain environments — DNA ribbon, metro grid, career road,
+// gallery pillars, gravity well — were replaced wholesale by HelixTunnel;
+// they live on in git history at commit abc72d2d if ever wanted back.)
 
 const PathTrail = ({ curve, accent }: { curve: THREE.CatmullRomCurve3; accent: string }) => {
   const geom = useMemo(() => new THREE.BufferGeometry().setFromPoints(curve.getPoints(220)), [curve]);
@@ -665,15 +715,19 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
   const curve = useMemo(() => new THREE.CatmullRomCurve3(waypoints, false, 'catmullrom', 0.4), [waypoints]);
   const Station = STATION_BY_DOMAIN[config.id] ?? MoleculeStation;
 
-  // The camera dollies along the curve THROUGH the waypoints — so monoliths
-  // must stand BESIDE the walkway (alternating like gallery pieces), or the
-  // camera flies straight into the slab. Other worlds keep stations on-path.
+  // Normalised curve position of each chapter — the tunnel opens its
+  // replication bubbles exactly here.
+  const stationTs = useMemo(() => chapters.map((_, i) => i / Math.max(1, N - 1)), [chapters, N]);
+
+  // The camera dollies along the curve THROUGH the waypoints. Gates stay
+  // on-axis (flown through); everything else steps aside so the camera never
+  // clips a slab, soma or ring while passing a station.
   const stationPositions = useMemo(() => waypoints.map((w, i) => {
-    if (config.id !== 'projects') return w;
+    if (config.id === 'experience') return w;
     const t = THREE.MathUtils.clamp(i / Math.max(1, N - 1), 0, 1);
-    const tan = curve.getTangent(t).normalize();
-    const side = new THREE.Vector3().crossVectors(tan, UP).normalize();
-    return w.clone().addScaledVector(side, i % 2 === 0 ? -8.5 : 8.5);
+    const { side } = frameAt(curve, t);
+    const off = config.id === 'projects' ? -4.5 : -3.2;
+    return w.clone().addScaledVector(side, off);
   }), [waypoints, curve, config.id, N]);
 
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -764,39 +818,34 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
         <PathTrail curve={curve} accent={config.accent} />
         <AmbientDust curve={curve} accent={config.accent} />
 
-        {/* Domain-specific world */}
-        {config.id === 'skills' && <DnaRibbon curve={curve} accent={config.accent} />}
-        {config.id === 'experience' && (
-          <>
-            <MetroGrid accent={config.accent} minY={waypoints[N - 1].y} />
-            <CareerRoad curve={curve} accent={config.accent} />
-          </>
-        )}
-        {config.id === 'projects' && <GalleryPillars curve={curve} accent={config.accent} />}
-        {config.id === 'education' && <GravityWell accent={config.accent} end={waypoints[N - 1]} />}
+        {/* One shared world: the inside of the double helix */}
+        <HelixTunnel curve={curve} accent={config.accent} stationTs={stationTs} />
         <IntroHeadline curve={curve} text={config.intro} accent={config.accent} />
 
         {chapters.map((ch, i) => (
-          <Station
-            key={i}
-            position={stationPositions[i]}
-            accent={config.accent}
-            title={ch.title}
-            kicker={ch.kicker}
-            metric={ch.metric}
-            place={ch.place}
-            sculpture={ch.sculpture}
-            isLast={i === N - 1}
-            chips={ch.chips}
-            index={i}
-            scroll={scroll}
-            chapters={N}
-            // Monoliths face the walkway they flank; gates face down-path so
-            // the camera flies through them.
-            facing={config.id === 'projects'
-              ? waypoints[i]
-              : (waypoints[i + 1] ?? waypoints[i].clone().add(waypoints[i].clone().sub(waypoints[i - 1] ?? waypoints[i])))}
-          />
+          // Outer group: bubble placement + shrink to fit inside the helix.
+          // Stations receive a zero-origin position and bob around it.
+          <group key={i} position={stationPositions[i]} scale={0.72}>
+            <Station
+              position={ORIGIN}
+              accent={config.accent}
+              title={ch.title}
+              kicker={ch.kicker}
+              metric={ch.metric}
+              place={ch.place}
+              sculpture={ch.sculpture}
+              isLast={i === N - 1}
+              chips={ch.chips}
+              index={i}
+              scroll={scroll}
+              chapters={N}
+              // Monoliths face the walkway they flank; gates face down-path so
+              // the camera flies through them.
+              facing={config.id === 'projects'
+                ? waypoints[i]
+                : (waypoints[i + 1] ?? waypoints[i].clone().add(waypoints[i].clone().sub(waypoints[i - 1] ?? waypoints[i])))}
+            />
+          </group>
         ))}
 
         <EffectComposer multisampling={0}>
