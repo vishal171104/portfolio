@@ -646,7 +646,7 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
                     <a href="mailto:vishal171104@gmail.com" title="Email">
                       <Mail size={22} className="text-white/40 hover:text-white transition-colors" />
                     </a>
-                    <a href="/Vishal_S_I_Resume.pdf" download="Vishal_S_I_Resume.pdf" title="Resume">
+                    <a href="Vishal_S_I_Resume.pdf" download="Vishal_S_I_Resume.pdf" title="Resume">
                       <FileText size={22} className="text-white/40 hover:text-white transition-colors" />
                     </a>
                   </div>
