@@ -1,73 +1,54 @@
-import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Text, Stars } from '@react-three/drei';
 import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocessing';
 import { ArrowLeft, ChevronDown, Github, Linkedin, Mail, FileText } from 'lucide-react';
 import * as THREE from 'three';
 import { DEEP_DIVES, DIVE_ORDER, DiveConfig } from '../../data/deep_dives';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Scroll-driven cinematic, one per domain — travelled from INSIDE the DNA.
-// The camera flies down the axis of a double helix: two sugar-phosphate
-// backbones spiral around you (offset asymmetrically, like real B-DNA's major
-// and minor grooves), base-pair rungs in textbook A-T / G-C colours sweep
-// past, and at every chapter the strands bulge apart into a "replication
-// bubble" — the genome literally opening so a part of it can be read.
-// Inside each bubble the domain keeps its own station:
-//   skills → neuron with synapsed chips · experience → company gates
-//   projects → monoliths + totems · education → open book in gyro rings
-// All paths descend: scrolling down travels DOWN, like any website.
-// Scroll state is per-mount (no module globals) and drives camera + HTML in
-// the same rAF so the two layers can never drift apart.
+// Scroll-driven cinematic, travelled from INSIDE the DNA — deliberately SPARSE.
+// Design rules that keep it professional:
+//   · exactly one text layer — the HTML chapter cards; the 3D never speaks
+//   · one focal object per chapter, centred in a "replication bubble"
+//   · a quiet helix: few beads, thin rungs, deep fog, restrained bloom
+// The two backbones keep real B-DNA's asymmetric groove offset; base-pair
+// rungs use the textbook A-T / G-C colour pairs — quietly correct.
+// Scroll state is per-mount and drives camera + HTML from one rAF.
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface ScrollState { target: number; current: number }
 
 const SCROLL_PER_CHAPTER = 1200;
 const UP = new THREE.Vector3(0, 1, 0);
-const ORIGIN = new THREE.Vector3(0, 0, 0);
-
-const FONT_BOLD = '/fonts/JetBrainsMono-Bold.ttf';
-const FONT_REG = '/fonts/JetBrainsMono-Regular.ttf';
 
 // Every journey loses altitude as it progresses — wheel-down goes down.
+// All four are GENTLE arcs: the helix walls provide the drama, so the camera
+// path must stay orderly or the loops pile into visual noise. Curvature and
+// descent rate differ subtly per domain; the real differentiation is accent
+// colour + station content.
 function buildWaypoints(kind: DiveConfig['path'], n: number): THREE.Vector3[] {
   const pts: THREE.Vector3[] = [];
   for (let i = 0; i < n; i++) {
     switch (kind) {
-      case 'helix': { // skills — descending spiral
-        const a = i * Math.PI * 0.85;
-        pts.push(new THREE.Vector3(Math.cos(a) * 14, -i * 9, Math.sin(a) * 14));
+      case 'helix':
+        pts.push(new THREE.Vector3(Math.sin(i * 0.75) * 6, -i * 7, -i * 22));
         break;
-      }
-      case 'road': // experience — gently sinking highway
+      case 'road':
         pts.push(new THREE.Vector3(Math.sin(i * 0.9) * 7, -i * 3.5, -i * 26));
         break;
-      case 'zigzag': // projects — gallery corridor stepping down
-        pts.push(new THREE.Vector3(i % 2 === 0 ? -10 : 10, -i * 4, -i * 24));
+      case 'zigzag':
+        pts.push(new THREE.Vector3(i % 2 === 0 ? -5 : 5, -i * 4, -i * 24));
         break;
-      case 'orbit': { // education — sinking into the core
-        const a = i * 1.9;
-        pts.push(new THREE.Vector3(Math.cos(a) * 16, -i * 10, Math.sin(a) * 16));
+      case 'orbit':
+        pts.push(new THREE.Vector3(Math.cos(i * 0.8) * 6 - 6, -i * 8, -i * 22));
         break;
-      }
     }
   }
   return pts;
 }
 
-// The camera rides INSIDE the helix, close to the axis — a slight side/up
-// offset keeps the composition off-centre while stations stay in frame.
-const CAM_OFFSET: Record<DiveConfig['path'], { back: number; side: number; up: number }> = {
-  helix: { back: 9, side: 1.8, up: 1.2 },
-  road: { back: 10, side: 1.6, up: 1.4 },
-  zigzag: { back: 10, side: 2.0, up: 1.2 },
-  orbit: { back: 9, side: 1.8, up: 1.4 },
-};
-
-// ── THE TUNNEL: inside the double helix ──────────────────────────────────────
-// Textbook base colours: adenine/thymine and guanine/cytosine pairs.
+// Textbook base colours: adenine/thymine, guanine/cytosine.
 const BASE_COLORS: Record<string, THREE.Color> = {
   A: new THREE.Color('#4f9dff'),
   T: new THREE.Color('#ffd24f'),
@@ -77,12 +58,10 @@ const BASE_COLORS: Record<string, THREE.Color> = {
 const BASE_PAIRS: Array<[keyof typeof BASE_COLORS, keyof typeof BASE_COLORS]> =
   [['A', 'T'], ['T', 'A'], ['G', 'C'], ['C', 'G']];
 
-const TUNNEL_RADIUS = 9;
-// Real B-DNA strands are not 180° apart — the ~2.2 rad offset carves the
-// asymmetric major/minor grooves you see in every structure render.
+const TUNNEL_RADIUS = 12;
+// Real strands aren't 180° apart — this offset carves the major/minor grooves.
 const GROOVE_OFFSET = 2.2;
 
-// Perpendicular frame at t, stable for our mostly-nonvertical paths.
 function frameAt(curve: THREE.CatmullRomCurve3, t: number) {
   const tan = curve.getTangent(t).normalize();
   let side = new THREE.Vector3().crossVectors(tan, UP);
@@ -92,16 +71,56 @@ function frameAt(curve: THREE.CatmullRomCurve3, t: number) {
   return { tan, side, up2 };
 }
 
-// Replication-bubble factor: 1 away from stations, up to ~1.95 at them.
+// Replication-bubble factor: strands part gently around each chapter.
 function bulgeAt(t: number, stationTs: number[]) {
   let b = 0;
   for (const st of stationTs) {
-    const d = (t - st) / 0.055;
+    const d = (t - st) / 0.06;
     b = Math.max(b, Math.exp(-d * d));
   }
-  return 1 + b * 0.95;
+  return 1 + b * 0.7;
 }
 
+function dwell(f: number): number {
+  const i = Math.round(f);
+  const d = f - i;
+  return i + Math.sign(d) * d * d * 2;
+}
+
+const CameraRig = ({ scroll, curve, chapters }: {
+  scroll: ScrollState; curve: THREE.CatmullRomCurve3; chapters: number;
+}) => {
+  const { camera } = useThree();
+  const lookTarget = useRef(new THREE.Vector3());
+  const initialized = useRef(false);
+
+  useFrame(() => {
+    const f = dwell(scroll.current * (chapters - 1));
+    const t = THREE.MathUtils.clamp(f / (chapters - 1), 0, 1);
+
+    const pos = curve.getPoint(t);
+    const { tan, side } = frameAt(curve, t);
+
+    const camPos = pos.clone()
+      .addScaledVector(tan, -10)
+      .addScaledVector(side, 2.2)
+      .add(new THREE.Vector3(0, 1.6, 0));
+    const look = pos.clone().addScaledVector(tan, 5);
+
+    if (!initialized.current) {
+      camera.position.copy(camPos.clone().addScaledVector(tan, -12).add(new THREE.Vector3(0, 3, 0)));
+      lookTarget.current.copy(look);
+      initialized.current = true;
+    }
+
+    camera.position.lerp(camPos, 0.06);
+    lookTarget.current.lerp(look, 0.08);
+    camera.lookAt(lookTarget.current);
+  });
+  return null;
+};
+
+// ── The quiet helix ──────────────────────────────────────────────────────────
 const HelixTunnel = ({ curve, accent, stationTs }: {
   curve: THREE.CatmullRomCurve3; accent: string; stationTs: number[];
 }) => {
@@ -109,9 +128,9 @@ const HelixTunnel = ({ curve, accent, stationTs }: {
   const rungARef = useRef<THREE.InstancedMesh>(null);
   const rungBRef = useRef<THREE.InstancedMesh>(null);
 
-  const { beadCount, beadMatrices, rungs, letters, turns } = useMemo(() => {
-    const SEG = 440;
-    const turns = 9 + stationTs.length; // more chapters, more twist
+  const { beadCount, beadMatrices, rungs } = useMemo(() => {
+    const SEG = 240;
+    const turns = 8 + stationTs.length;
     const dummy = new THREE.Object3D();
     const beadMatrices: THREE.Matrix4[] = [];
     const strandPts: [THREE.Vector3, THREE.Vector3][] = [];
@@ -131,19 +150,20 @@ const HelixTunnel = ({ curve, accent, stationTs }: {
       strandPts.push([pA, pB]);
       for (const p of [pA, pB]) {
         dummy.position.copy(p);
-        dummy.scale.setScalar(0.55);
+        dummy.scale.setScalar(0.45);
         dummy.updateMatrix();
         beadMatrices.push(dummy.matrix.clone());
       }
     }
 
-    // Base-pair rungs: two coloured halves meeting mid-tunnel. Skipped near
-    // stations — that's the open bubble where the content lives.
+    // Thin base-pair rungs, absent inside the bubbles — the open reading frame.
+    // The exclusion zone is generous: a rung crossing near the camera's dwell
+    // point reads as clutter, so none may exist close to a chapter.
     const rungs: { mA: THREE.Matrix4; mB: THREE.Matrix4; cA: THREE.Color; cB: THREE.Color }[] = [];
-    const STEP = 6;
+    const STEP = 10;
     for (let i = 0; i < SEG; i += STEP) {
       const t = i / (SEG - 1);
-      if (stationTs.some((st) => Math.abs(t - st) < 0.05)) continue;
+      if (stationTs.some((st) => Math.abs(t - st) < 0.09)) continue;
       const [pA, pB] = strandPts[i];
       const mid = pA.clone().add(pB).multiplyScalar(0.5);
       const pair = BASE_PAIRS[(i / STEP + Math.floor(i * 0.37)) % 4];
@@ -162,24 +182,7 @@ const HelixTunnel = ({ curve, accent, stationTs }: {
       });
     }
 
-    // Loose nucleotide letters drifting through the tunnel
-    const letters: { pos: THREE.Vector3; ch: string; color: string }[] = [];
-    for (let i = 0; i < 26; i++) {
-      const t = Math.random();
-      const { side, up2 } = frameAt(curve, t);
-      const a = Math.random() * Math.PI * 2;
-      const rr = 3 + Math.random() * 4;
-      const ch = 'ATGC'[Math.floor(Math.random() * 4)];
-      letters.push({
-        pos: curve.getPoint(t)
-          .addScaledVector(side, Math.cos(a) * rr)
-          .addScaledVector(up2, Math.sin(a) * rr),
-        ch,
-        color: '#' + BASE_COLORS[ch as keyof typeof BASE_COLORS].getHexString(),
-      });
-    }
-
-    return { beadCount: beadMatrices.length, beadMatrices, rungs, letters, turns };
+    return { beadCount: beadMatrices.length, beadMatrices, rungs };
   }, [curve, stationTs]);
 
   useEffect(() => {
@@ -202,75 +205,25 @@ const HelixTunnel = ({ curve, accent, stationTs }: {
 
   return (
     <group>
-      {/* twin sugar-phosphate backbones */}
       <instancedMesh ref={beadsRef} args={[undefined, undefined, beadCount]} frustumCulled={false}>
         <sphereGeometry args={[1, 10, 10]} />
-        <meshStandardMaterial color="#0a0c16" emissive={accent} emissiveIntensity={0.55} roughness={0.35} metalness={0.4} />
+        <meshStandardMaterial color="#0a0c16" emissive={accent} emissiveIntensity={0.4} roughness={0.4} metalness={0.35} />
       </instancedMesh>
-      {/* base-pair rungs, one instanced mesh per colour half */}
       <instancedMesh ref={rungARef} args={[undefined, undefined, rungs.length]} frustumCulled={false}>
-        <cylinderGeometry args={[0.24, 0.24, 1, 8]} />
-        <meshBasicMaterial toneMapped={false} transparent opacity={0.85} />
+        <cylinderGeometry args={[0.11, 0.11, 1, 8]} />
+        <meshBasicMaterial toneMapped={false} transparent opacity={0.3} />
       </instancedMesh>
       <instancedMesh ref={rungBRef} args={[undefined, undefined, rungs.length]} frustumCulled={false}>
-        <cylinderGeometry args={[0.24, 0.24, 1, 8]} />
-        <meshBasicMaterial toneMapped={false} transparent opacity={0.85} />
+        <cylinderGeometry args={[0.11, 0.11, 1, 8]} />
+        <meshBasicMaterial toneMapped={false} transparent opacity={0.3} />
       </instancedMesh>
-      {/* stray nucleotides */}
-      <Suspense fallback={null}>
-        {letters.map((l, i) => (
-          <Text key={i} position={l.pos} fontSize={0.55} color={l.color} anchorX="center" anchorY="middle" font={FONT_BOLD} fillOpacity={0.55}>
-            {l.ch}
-          </Text>
-        ))}
-      </Suspense>
     </group>
   );
 };
 
-// Dwell briefly at each station: settle, read, release.
-function dwell(f: number): number {
-  const i = Math.round(f);
-  const d = f - i;
-  return i + Math.sign(d) * d * d * 2;
-}
+// ── One station template: a soft halo + the domain's single signature object.
+// No 3D text anywhere — the HTML card carries every word. ────────────────────
 
-const CameraRig = ({ scroll, curve, chapters, path }: {
-  scroll: ScrollState; curve: THREE.CatmullRomCurve3; chapters: number; path: DiveConfig['path'];
-}) => {
-  const { camera } = useThree();
-  const lookTarget = useRef(new THREE.Vector3());
-  const initialized = useRef(false);
-  const off = CAM_OFFSET[path];
-
-  useFrame(() => {
-    const f = dwell(scroll.current * (chapters - 1));
-    const t = THREE.MathUtils.clamp(f / (chapters - 1), 0, 1);
-
-    const pos = curve.getPoint(t);
-    const tan = curve.getTangent(t).normalize();
-    const side = new THREE.Vector3().crossVectors(tan, UP).normalize();
-
-    const camPos = pos.clone()
-      .addScaledVector(tan, -off.back)
-      .addScaledVector(side, off.side)
-      .add(new THREE.Vector3(0, off.up, 0));
-    const look = pos.clone().addScaledVector(tan, 5);
-
-    if (!initialized.current) {
-      camera.position.copy(camPos.clone().addScaledVector(tan, -14).add(new THREE.Vector3(0, 5, 0)));
-      lookTarget.current.copy(look);
-      initialized.current = true;
-    }
-
-    camera.position.lerp(camPos, 0.06);
-    lookTarget.current.lerp(look, 0.08);
-    camera.lookAt(lookTarget.current);
-  });
-  return null;
-};
-
-// Shared per-station activation logic
 function useProximity(scroll: ScrollState, index: number, chapters: number) {
   const value = useRef(0);
   useFrame(() => {
@@ -280,181 +233,12 @@ function useProximity(scroll: ScrollState, index: number, chapters: number) {
   return value;
 }
 
-// Giant headline floating where the journey begins — the first thing seen.
-const IntroHeadline = ({ curve, text, accent }: { curve: THREE.CatmullRomCurve3; text: string; accent: string }) => {
-  const pos = useMemo(() => {
-    const p = curve.getPoint(0);
-    const tan = curve.getTangent(0).normalize();
-    // Floats in the upper half of the tunnel mouth, ahead of the first bubble
-    return p.clone().addScaledVector(tan, 7).add(new THREE.Vector3(0, 9.5, 0));
-  }, [curve]);
-  return (
-    <Suspense fallback={null}>
-      <Text position={pos} fontSize={1.7} color={accent} anchorX="center" anchorY="middle" font={FONT_BOLD} maxWidth={15} textAlign="center" letterSpacing={0.12}>
-        {text}
-        <meshBasicMaterial color={accent} toneMapped={false} transparent opacity={0.85} />
-      </Text>
-    </Suspense>
-  );
-};
-
-// ── SKILLS: neuron — icosa soma, portal ring, chips wired to the core by
-// glowing synapses that brighten as the station activates ───────────────────
-const MoleculeStation = ({ position, accent, title, chips, index, scroll, chapters }: StationProps) => {
-  const group = useRef<THREE.Group>(null);
-  const ring = useRef<THREE.Mesh>(null);
-  const core = useRef<THREE.Mesh>(null);
-  const light = useRef<THREE.PointLight>(null);
-  const chipsGroup = useRef<THREE.Group>(null);
-  const synapseMat = useRef<THREE.LineBasicMaterial>(null);
-  const prox = useProximity(scroll, index, chapters);
-
-  // Line pairs from the soma to each chip — the skill graph made literal
-  const synapses = useMemo(() => {
-    const pts: number[] = [];
-    chips.forEach((_, ci) => {
-      const a = (ci / chips.length) * Math.PI * 2;
-      pts.push(0, 0, 0, Math.cos(a) * 4.4, -0.4 + Math.sin(ci * 1.7) * 0.9, Math.sin(a) * 4.4);
-    });
-    return new Float32Array(pts);
-  }, [chips]);
-
-  useFrame((state) => {
-    const p = prox.current;
-    const tm = state.clock.getElapsedTime();
-    if (ring.current) {
-      ring.current.rotation.z = tm * 0.25 + index;
-      (ring.current.material as THREE.MeshBasicMaterial).opacity = 0.25 + p * 0.75;
-      ring.current.scale.setScalar(1 + p * 0.18);
-    }
-    if (core.current) {
-      core.current.rotation.y = tm * 0.6;
-      core.current.rotation.x = tm * 0.3;
-      (core.current.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.4 + p * 2.6;
-    }
-    if (light.current) light.current.intensity = p * 60;
-    if (chipsGroup.current) {
-      chipsGroup.current.rotation.y = tm * 0.22;
-      chipsGroup.current.visible = p > 0.05;
-    }
-    if (synapseMat.current) synapseMat.current.opacity = 0.1 + p * 0.55;
-    if (group.current) group.current.position.y = position.y + Math.sin(tm * 0.9 + index * 2) * 0.35;
-  });
-
-  return (
-    <group ref={group} position={position}>
-      <mesh ref={ring}>
-        <torusGeometry args={[6.2, 0.07, 12, 96]} />
-        <meshBasicMaterial color={accent} transparent opacity={0.3} toneMapped={false} />
-      </mesh>
-      <mesh ref={core}>
-        <icosahedronGeometry args={[1.4, 1]} />
-        <meshStandardMaterial color="#0a0a12" emissive={accent} emissiveIntensity={0.4} roughness={0.25} metalness={0.6} flatShading />
-      </mesh>
-      <pointLight ref={light} color={accent} intensity={0} distance={40} decay={2} />
-      <Suspense fallback={null}>
-        <Text position={[0, 7.6, 0]} fontSize={1.1} color="#ffffff" anchorX="center" anchorY="bottom" font={FONT_BOLD} maxWidth={18} textAlign="center">
-          {title}
-          <meshBasicMaterial color="#ffffff" toneMapped={false} />
-        </Text>
-        <group ref={chipsGroup}>
-          {/* synapses rotate with the chips they feed */}
-          <lineSegments>
-            <bufferGeometry><bufferAttribute attach="attributes-position" args={[synapses, 3]} /></bufferGeometry>
-            <lineBasicMaterial ref={synapseMat} color={accent} transparent opacity={0.1} toneMapped={false} />
-          </lineSegments>
-          {chips.map((chip, ci) => {
-            const a = (ci / chips.length) * Math.PI * 2;
-            return (
-              <Text key={chip} position={[Math.cos(a) * 4.4, -0.4 + Math.sin(ci * 1.7) * 0.9, Math.sin(a) * 4.4]} rotation={[0, -a + Math.PI / 2, 0]} fontSize={0.52} color={accent} anchorX="center" anchorY="middle" font={FONT_REG}>
-                {chip}
-                <meshBasicMaterial color={accent} toneMapped={false} />
-              </Text>
-            );
-          })}
-        </group>
-      </Suspense>
-    </group>
-  );
-};
-
-// ── EXPERIENCE: portal gate — a frame you fly through, year on the lintel ───
-const GateStation = ({ position, accent, title, kicker, place, chips, index, scroll, chapters, facing }: StationProps) => {
-  const group = useRef<THREE.Group>(null);
-  const frameMat = useRef<THREE.MeshStandardMaterial>(null);
-  const light = useRef<THREE.PointLight>(null);
-  const prox = useProximity(scroll, index, chapters);
-  const year = (kicker ?? '').slice(0, 4);
-
-  useEffect(() => {
-    if (group.current && facing) group.current.lookAt(facing);
-  }, [facing]);
-
-  useFrame(() => {
-    const p = prox.current;
-    if (frameMat.current) frameMat.current.emissiveIntensity = 0.3 + p * 2.4;
-    if (light.current) light.current.intensity = p * 70;
-  });
-
-  const bar: [number, number, number] = [11, 0.55, 0.55];
-  const pillar: [number, number, number] = [0.55, 12, 0.55];
-
-  return (
-    <group ref={group} position={position}>
-      {/* lintel + pillars */}
-      <mesh position={[0, 6, 0]}>
-        <boxGeometry args={bar} />
-        <meshStandardMaterial ref={frameMat} color="#0b0714" emissive={accent} emissiveIntensity={0.3} roughness={0.35} metalness={0.7} />
-      </mesh>
-      {[-5.5, 5.5].map((x) => (
-        <mesh key={x} position={[x, 0, 0]}>
-          <boxGeometry args={pillar} />
-          <meshStandardMaterial color="#0b0714" emissive={accent} emissiveIntensity={0.3} roughness={0.35} metalness={0.7} />
-        </mesh>
-      ))}
-      <pointLight ref={light} color={accent} intensity={0} distance={45} decay={2} />
-      <Suspense fallback={null}>
-        {/* Big year floating above, company stamped on the lintel like a
-            station sign, role beneath it — reads like arriving somewhere. */}
-        <Text position={[0, 8.6, 0]} fontSize={2.1} color={accent} anchorX="center" anchorY="bottom" font={FONT_BOLD}>
-          {year}
-          <meshBasicMaterial color={accent} toneMapped={false} />
-        </Text>
-        {place && (
-          <Text position={[0, 6.75, 0.4]} fontSize={0.95} color="#ffffff" anchorX="center" anchorY="bottom" font={FONT_BOLD} letterSpacing={0.15}>
-            {place}
-            <meshBasicMaterial color="#ffffff" toneMapped={false} />
-          </Text>
-        )}
-        <Text position={[0, 5.1, 0.4]} fontSize={0.55} color={accent} anchorX="center" anchorY="bottom" font={FONT_REG} maxWidth={14} textAlign="center">
-          {title}
-          <meshBasicMaterial color={accent} toneMapped={false} />
-        </Text>
-        {/* tech stamped along the pillars */}
-        {chips.slice(0, 3).map((chip, ci) => (
-          <Text key={chip} position={[ci % 2 === 0 ? -5.5 : 5.5, 2.5 - ci * 2.2, 0.5]} rotation={[0, 0, ci % 2 === 0 ? Math.PI / 2 : -Math.PI / 2]} fontSize={0.5} color={accent} anchorX="center" anchorY="middle" font={FONT_REG}>
-            {chip}
-            <meshBasicMaterial color={accent} toneMapped={false} />
-          </Text>
-        ))}
-      </Suspense>
-    </group>
-  );
-};
-
-// Primitive totems — instantly readable symbols of what each project IS.
+// Primitive totems for projects — small, readable silhouettes.
 const ProjectTotem = ({ kind, accent }: { kind?: string; accent: string }) => {
-  const group = useRef<THREE.Group>(null);
-  useFrame((state) => {
-    if (group.current) {
-      group.current.rotation.y = state.clock.getElapsedTime() * 0.5;
-      group.current.position.y = 6.6 + Math.sin(state.clock.getElapsedTime() * 1.1) * 0.25;
-    }
-  });
-  const mat = <meshStandardMaterial color="#0d0a04" emissive={accent} emissiveIntensity={1.3} roughness={0.35} metalness={0.5} />;
+  const mat = <meshStandardMaterial color="#0d0a04" emissive={accent} emissiveIntensity={1.1} roughness={0.35} metalness={0.5} />;
   return (
-    <group ref={group} position={[0, 6.6, 0]}>
-      {kind === 'cards' && ( // classifier: three tickets fanned into sorted stacks
+    <group>
+      {kind === 'cards' && (
         <group>
           {[-0.9, 0, 0.9].map((x, i) => (
             <mesh key={i} position={[x, i * 0.12, i * -0.12]} rotation={[0, 0, (i - 1) * 0.35]}>
@@ -464,233 +248,138 @@ const ProjectTotem = ({ kind, accent }: { kind?: string; accent: string }) => {
           ))}
         </group>
       )}
-      {kind === 'dumbbell' && ( // RankGym: the most honest gym icon there is
+      {kind === 'dumbbell' && (
         <group rotation={[0, 0, Math.PI / 14]}>
           <mesh rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.14, 0.14, 2.6, 12]} />{mat}</mesh>
           <mesh position={[-1.3, 0, 0]}><sphereGeometry args={[0.52, 16, 16]} />{mat}</mesh>
           <mesh position={[1.3, 0, 0]}><sphereGeometry args={[0.52, 16, 16]} />{mat}</mesh>
         </group>
       )}
-      {kind === 'crates' && ( // MaligaiKadai: stocked inventory crates
+      {kind === 'crates' && (
         <group>
           <mesh position={[-0.55, -0.5, 0]}><boxGeometry args={[1, 1, 1]} />{mat}</mesh>
           <mesh position={[0.6, -0.5, 0.15]}><boxGeometry args={[1, 1, 1]} />{mat}</mesh>
           <mesh position={[0, 0.55, 0.05]} rotation={[0, 0.5, 0]}><boxGeometry args={[1, 1, 1]} />{mat}</mesh>
         </group>
       )}
-      {kind === 'pin' && ( // Vehicle Tracking: a live map pin
+      {kind === 'pin' && (
         <group>
           <mesh position={[0, 0.45, 0]} rotation={[Math.PI, 0, 0]}><coneGeometry args={[0.55, 1.5, 20]} />{mat}</mesh>
           <mesh position={[0, 1.2, 0]}><sphereGeometry args={[0.55, 18, 18]} />{mat}</mesh>
-          <mesh position={[0, -0.6, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.7, 0.85, 24]} />
-            <meshBasicMaterial color={accent} transparent opacity={0.5} toneMapped={false} side={THREE.DoubleSide} />
-          </mesh>
         </group>
       )}
-    </group>
-  );
-};
-
-// ── PROJECTS: monolith slab — a standing stone with the blueprint on it ─────
-const MonolithStation = ({ position, accent, title, chips, metric, sculpture, index, scroll, chapters, facing }: StationProps) => {
-  const group = useRef<THREE.Group>(null);
-  const faceMat = useRef<THREE.MeshBasicMaterial>(null);
-  const slabMat = useRef<THREE.MeshStandardMaterial>(null);
-  const light = useRef<THREE.PointLight>(null);
-  const prox = useProximity(scroll, index, chapters);
-
-  useEffect(() => {
-    if (group.current && facing) {
-      group.current.lookAt(facing);
-      group.current.rotateY(index % 2 === 0 ? 0.12 : -0.12); // slight gallery angle
-    }
-  }, [facing, index]);
-
-  useFrame((state) => {
-    const p = prox.current;
-    const tm = state.clock.getElapsedTime();
-    if (faceMat.current) faceMat.current.opacity = 0.05 + p * 0.16;
-    if (slabMat.current) slabMat.current.emissiveIntensity = 0.15 + p * 1.4;
-    if (light.current) light.current.intensity = p * 55;
-    if (group.current) group.current.position.y = position.y + Math.sin(tm * 0.7 + index * 2.4) * 0.3;
-  });
-
-  return (
-    <group ref={group} position={position}>
-      {/* the slab */}
-      <mesh>
-        <boxGeometry args={[7, 9.5, 0.5]} />
-        <meshStandardMaterial ref={slabMat} color="#0d0a04" emissive={accent} emissiveIntensity={0.15} roughness={0.4} metalness={0.65} />
-      </mesh>
-      {/* glowing screen face */}
-      <mesh position={[0, 0, 0.28]}>
-        <planeGeometry args={[6.2, 8.7]} />
-        <meshBasicMaterial ref={faceMat} color={accent} transparent opacity={0.05} toneMapped={false} />
-      </mesh>
-      <pointLight ref={light} color={accent} intensity={0} distance={42} decay={2} position={[0, 0, 4]} />
-      <ProjectTotem kind={sculpture} accent={accent} />
-      <Suspense fallback={null}>
-        <Text position={[0, 2.9, 0.35]} fontSize={0.78} color="#ffffff" anchorX="center" anchorY="middle" font={FONT_BOLD} maxWidth={5.6} textAlign="center">
-          {title}
-          <meshBasicMaterial color="#ffffff" toneMapped={false} />
-        </Text>
-        {metric && (
-          <Text position={[0, 1.5, 0.35]} fontSize={0.5} color={accent} anchorX="center" anchorY="middle" font={FONT_BOLD} maxWidth={5.6} textAlign="center">
-            {metric}
-            <meshBasicMaterial color={accent} toneMapped={false} />
-          </Text>
-        )}
-        {chips.slice(0, 4).map((chip, ci) => (
-          <Text key={chip} position={[0, -0.6 - ci * 0.85, 0.35]} fontSize={0.44} color="#ffffffcc" anchorX="center" anchorY="middle" font={FONT_REG} maxWidth={5.6}>
-            {chip}
-          </Text>
-        ))}
-      </Suspense>
-    </group>
-  );
-};
-
-// ── EDUCATION: gyroscope of learning — nested rings around an OPEN BOOK; the
-// final station wears the graduation cap ─────────────────────────────────────
-const GyroStation = ({ position, accent, title, chips, index, scroll, chapters, isLast }: StationProps) => {
-  const group = useRef<THREE.Group>(null);
-  const r1 = useRef<THREE.Mesh>(null);
-  const r2 = useRef<THREE.Mesh>(null);
-  const r3 = useRef<THREE.Mesh>(null);
-  const book = useRef<THREE.Group>(null);
-  const light = useRef<THREE.PointLight>(null);
-  const chipsGroup = useRef<THREE.Group>(null);
-  const capGroup = useRef<THREE.Group>(null);
-  const prox = useProximity(scroll, index, chapters);
-
-  useFrame((state) => {
-    const p = prox.current;
-    const tm = state.clock.getElapsedTime();
-    if (r1.current) { r1.current.rotation.x = tm * 0.5; (r1.current.material as THREE.MeshBasicMaterial).opacity = 0.2 + p * 0.8; }
-    if (r2.current) { r2.current.rotation.y = tm * 0.65; r2.current.rotation.z = Math.PI / 3; (r2.current.material as THREE.MeshBasicMaterial).opacity = 0.2 + p * 0.65; }
-    if (r3.current) { r3.current.rotation.z = tm * 0.4; r3.current.rotation.x = Math.PI / 2.4; (r3.current.material as THREE.MeshBasicMaterial).opacity = 0.2 + p * 0.5; }
-    if (book.current) {
-      book.current.rotation.y = tm * 0.45;
-      book.current.children.forEach((half) => {
-        const m = (half as THREE.Mesh).material as THREE.MeshStandardMaterial;
-        if (m?.emissiveIntensity !== undefined) m.emissiveIntensity = 0.5 + p * 2.2;
-      });
-    }
-    if (capGroup.current) {
-      capGroup.current.rotation.y = -tm * 0.35;
-      capGroup.current.position.y = 8.9 + Math.sin(tm * 1.2) * 0.25;
-    }
-    if (light.current) light.current.intensity = p * 65;
-    if (chipsGroup.current) {
-      chipsGroup.current.rotation.y = -tm * 0.18;
-      chipsGroup.current.visible = p > 0.05;
-    }
-    if (group.current) group.current.position.y = position.y + Math.sin(tm * 0.8 + index * 1.8) * 0.35;
-  });
-
-  return (
-    <group ref={group} position={position}>
-      <mesh ref={r1}><torusGeometry args={[5.4, 0.06, 10, 80]} /><meshBasicMaterial color={accent} transparent opacity={0.25} toneMapped={false} /></mesh>
-      <mesh ref={r2}><torusGeometry args={[4.3, 0.06, 10, 80]} /><meshBasicMaterial color={accent} transparent opacity={0.25} toneMapped={false} /></mesh>
-      <mesh ref={r3}><torusGeometry args={[3.2, 0.06, 10, 80]} /><meshBasicMaterial color="#ffffff" transparent opacity={0.2} toneMapped={false} /></mesh>
-      {/* open book: two pages meeting at the spine */}
-      <group ref={book}>
-        <mesh position={[-0.62, 0, 0]} rotation={[0, 0, 0.42]}>
-          <boxGeometry args={[1.3, 0.08, 1.7]} />
-          <meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={0.5} roughness={0.4} />
-        </mesh>
-        <mesh position={[0.62, 0, 0]} rotation={[0, 0, -0.42]}>
-          <boxGeometry args={[1.3, 0.08, 1.7]} />
-          <meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={0.5} roughness={0.4} />
-        </mesh>
-      </group>
-      {/* the graduation cap crowns the final chapter */}
-      {isLast && (
-        <group ref={capGroup} position={[0, 8.9, 0]}>
-          <mesh><boxGeometry args={[2.1, 0.12, 2.1]} /><meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={1.2} roughness={0.4} /></mesh>
-          <mesh position={[0, -0.4, 0]}><boxGeometry args={[0.95, 0.7, 0.95]} /><meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={0.8} roughness={0.4} /></mesh>
-          <mesh position={[0.9, -0.45, 0.9]}><sphereGeometry args={[0.14, 10, 10]} /><meshBasicMaterial color={accent} toneMapped={false} /></mesh>
-        </group>
-      )}
-      <pointLight ref={light} color={accent} intensity={0} distance={42} decay={2} />
-      <Suspense fallback={null}>
-        <Text position={[0, 7.2, 0]} fontSize={1.05} color="#ffffff" anchorX="center" anchorY="bottom" font={FONT_BOLD} maxWidth={17} textAlign="center">
-          {title}
-          <meshBasicMaterial color="#ffffff" toneMapped={false} />
-        </Text>
-        <group ref={chipsGroup}>
-          {chips.map((chip, ci) => {
-            const a = (ci / chips.length) * Math.PI * 2;
-            return (
-              <Text key={chip} position={[Math.cos(a) * 6.6, -0.2, Math.sin(a) * 6.6]} rotation={[0, -a + Math.PI / 2, 0]} fontSize={0.5} color={accent} anchorX="center" anchorY="middle" font={FONT_REG}>
-                {chip}
-                <meshBasicMaterial color={accent} toneMapped={false} />
-              </Text>
-            );
-          })}
-        </group>
-      </Suspense>
     </group>
   );
 };
 
 interface StationProps {
+  domainId: string;
   position: THREE.Vector3;
   accent: string;
-  title: string;
-  kicker?: string;
-  metric?: string;
-  place?: string;
   sculpture?: string;
   isLast?: boolean;
-  chips: string[];
   index: number;
   scroll: ScrollState;
   chapters: number;
   facing?: THREE.Vector3;
 }
 
-const STATION_BY_DOMAIN: Record<string, React.FC<StationProps>> = {
-  skills: MoleculeStation,
-  experience: GateStation,
-  projects: MonolithStation,
-  education: GyroStation,
-};
+const CleanStation = ({ domainId, position, accent, sculpture, isLast, index, scroll, chapters, facing }: StationProps) => {
+  const root = useRef<THREE.Group>(null);
+  const halo = useRef<THREE.Mesh>(null);
+  const obj = useRef<THREE.Group>(null);
+  const light = useRef<THREE.PointLight>(null);
+  const prox = useProximity(scroll, index, chapters);
+  const isGate = domainId === 'experience';
 
-// (Former per-domain environments — DNA ribbon, metro grid, career road,
-// gallery pillars, gravity well — were replaced wholesale by HelixTunnel;
-// they live on in git history at commit abc72d2d if ever wanted back.)
+  useEffect(() => {
+    if (isGate && root.current && facing) root.current.lookAt(facing);
+  }, [isGate, facing]);
 
-const PathTrail = ({ curve, accent }: { curve: THREE.CatmullRomCurve3; accent: string }) => {
-  const geom = useMemo(() => new THREE.BufferGeometry().setFromPoints(curve.getPoints(220)), [curve]);
-  return (
-    <points geometry={geom}>
-      <pointsMaterial color={accent} size={0.18} transparent opacity={0.5} sizeAttenuation />
-    </points>
-  );
-};
-
-const AmbientDust = ({ curve, accent }: { curve: THREE.CatmullRomCurve3; accent: string }) => {
-  const positions = useMemo(() => {
-    const arr = new Float32Array(500 * 3);
-    for (let i = 0; i < 500; i++) {
-      const p = curve.getPoint(Math.random());
-      arr[i * 3] = p.x + (Math.random() - 0.5) * 36;
-      arr[i * 3 + 1] = p.y + (Math.random() - 0.5) * 26;
-      arr[i * 3 + 2] = p.z + (Math.random() - 0.5) * 36;
-    }
-    return arr;
-  }, [curve]);
-  const ref = useRef<THREE.Points>(null);
   useFrame((state) => {
-    if (ref.current) ref.current.rotation.y = state.clock.getElapsedTime() * 0.008;
+    const p = prox.current;
+    const tm = state.clock.getElapsedTime();
+    if (halo.current) {
+      const m = halo.current.material as THREE.MeshBasicMaterial;
+      m.opacity = 0.12 + p * 0.55;
+      halo.current.rotation.z = tm * 0.15;
+    }
+    if (light.current) light.current.intensity = p * 42;
+    if (obj.current) {
+      obj.current.rotation.y = tm * 0.35;
+      obj.current.position.y = (isGate ? 0 : 1.9) + Math.sin(tm * 0.9 + index * 2) * 0.2;
+      const s = 0.92 + p * 0.14;
+      obj.current.scale.setScalar(s);
+    }
   });
+
   return (
-    <points ref={ref}>
-      <bufferGeometry><bufferAttribute attach="attributes-position" args={[positions, 3]} /></bufferGeometry>
-      <pointsMaterial color={accent} size={0.14} transparent opacity={0.35} sizeAttenuation />
-    </points>
+    <group ref={root} position={position}>
+      {/* halo: a pedestal disc for objects, the frame itself for gates */}
+      {!isGate && (
+        <mesh ref={halo} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[3.4, 0.045, 10, 90]} />
+          <meshBasicMaterial color={accent} transparent opacity={0.12} toneMapped={false} />
+        </mesh>
+      )}
+      <pointLight ref={light} color={accent} intensity={0} distance={34} decay={2} />
+
+      {isGate ? (
+        // experience: one slender gate, flown straight through
+        <group>
+          {[-4.2, 4.2].map((x) => (
+            <mesh key={x} position={[x, 0, 0]}>
+              <boxGeometry args={[0.26, 8.6, 0.26]} />
+              <meshStandardMaterial color="#0b0714" emissive={accent} emissiveIntensity={0.5} roughness={0.4} metalness={0.6} />
+            </mesh>
+          ))}
+          <mesh position={[0, 4.3, 0]}>
+            <boxGeometry args={[8.7, 0.26, 0.26]} />
+            <meshStandardMaterial color="#0b0714" emissive={accent} emissiveIntensity={0.5} roughness={0.4} metalness={0.6} />
+          </mesh>
+        </group>
+      ) : (
+        <group ref={obj} position={[0, 1.9, 0]}>
+          {domainId === 'skills' && (
+            <group>
+              <mesh>
+                <icosahedronGeometry args={[1.15, 1]} />
+                <meshStandardMaterial color="#0a0a12" emissive={accent} emissiveIntensity={1.2} roughness={0.25} metalness={0.6} flatShading />
+              </mesh>
+              {/* six silent satellites — capability without clutter */}
+              {Array.from({ length: 6 }, (_, i) => {
+                const a = (i / 6) * Math.PI * 2;
+                return (
+                  <mesh key={i} position={[Math.cos(a) * 2.5, Math.sin(i * 2.1) * 0.5, Math.sin(a) * 2.5]}>
+                    <sphereGeometry args={[0.14, 10, 10]} />
+                    <meshBasicMaterial color={accent} toneMapped={false} />
+                  </mesh>
+                );
+              })}
+            </group>
+          )}
+          {domainId === 'projects' && <ProjectTotem kind={sculpture} accent={accent} />}
+          {domainId === 'education' && (
+            <group>
+              <mesh position={[-0.62, 0, 0]} rotation={[0, 0, 0.42]}>
+                <boxGeometry args={[1.3, 0.08, 1.7]} />
+                <meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={1.1} roughness={0.4} />
+              </mesh>
+              <mesh position={[0.62, 0, 0]} rotation={[0, 0, -0.42]}>
+                <boxGeometry args={[1.3, 0.08, 1.7]} />
+                <meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={1.1} roughness={0.4} />
+              </mesh>
+              {isLast && (
+                <group position={[0, 1.5, 0]}>
+                  <mesh><boxGeometry args={[1.7, 0.1, 1.7]} /><meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={1} roughness={0.4} /></mesh>
+                  <mesh position={[0, -0.32, 0]}><boxGeometry args={[0.75, 0.55, 0.75]} /><meshStandardMaterial color="#04120a" emissive={accent} emissiveIntensity={0.7} roughness={0.4} /></mesh>
+                </group>
+              )}
+            </group>
+          )}
+        </group>
+      )}
+    </group>
   );
 };
 
@@ -713,21 +402,15 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
 
   const waypoints = useMemo(() => buildWaypoints(config.path, N), [config.path, N]);
   const curve = useMemo(() => new THREE.CatmullRomCurve3(waypoints, false, 'catmullrom', 0.4), [waypoints]);
-  const Station = STATION_BY_DOMAIN[config.id] ?? MoleculeStation;
-
-  // Normalised curve position of each chapter — the tunnel opens its
-  // replication bubbles exactly here.
   const stationTs = useMemo(() => chapters.map((_, i) => i / Math.max(1, N - 1)), [chapters, N]);
 
-  // The camera dollies along the curve THROUGH the waypoints. Gates stay
-  // on-axis (flown through); everything else steps aside so the camera never
-  // clips a slab, soma or ring while passing a station.
+  // Gates sit on-axis (flown through); every other signature object steps
+  // aside so the camera never clips it while passing.
   const stationPositions = useMemo(() => waypoints.map((w, i) => {
     if (config.id === 'experience') return w;
     const t = THREE.MathUtils.clamp(i / Math.max(1, N - 1), 0, 1);
     const { side } = frameAt(curve, t);
-    const off = config.id === 'projects' ? -4.5 : -3.2;
-    return w.clone().addScaledVector(side, off);
+    return w.clone().addScaledVector(side, -4.2);
   }), [waypoints, curve, config.id, N]);
 
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -807,51 +490,34 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
   return (
     <div className="fixed inset-0 z-[100] bg-black overflow-hidden animate-scene-fade-in" style={{ cursor: 'ns-resize' }}>
 
-      {/* ── 3D JOURNEY ── */}
+      {/* ── 3D: the quiet interior of the genome ── */}
       <Canvas gl={{ antialias: false, alpha: false, toneMapping: THREE.ACESFilmicToneMapping }} dpr={[1, 1.5]}>
-        <color attach="background" args={['#03040a']} />
-        <fog attach="fog" args={['#03040a', 30, 140]} />
-        <ambientLight intensity={0.25} />
+        <color attach="background" args={['#030409']} />
+        <fog attach="fog" args={['#030409', 22, 85]} />
+        <ambientLight intensity={0.22} />
 
-        <CameraRig scroll={scroll} curve={curve} chapters={N} path={config.path} />
-        <Stars radius={160} depth={60} count={4000} factor={3.5} saturation={0} fade speed={0.4} />
-        <PathTrail curve={curve} accent={config.accent} />
-        <AmbientDust curve={curve} accent={config.accent} />
-
-        {/* One shared world: the inside of the double helix */}
+        <CameraRig scroll={scroll} curve={curve} chapters={N} />
         <HelixTunnel curve={curve} accent={config.accent} stationTs={stationTs} />
-        <IntroHeadline curve={curve} text={config.intro} accent={config.accent} />
 
         {chapters.map((ch, i) => (
-          // Outer group: bubble placement + shrink to fit inside the helix.
-          // Stations receive a zero-origin position and bob around it.
-          <group key={i} position={stationPositions[i]} scale={0.72}>
-            <Station
-              position={ORIGIN}
-              accent={config.accent}
-              title={ch.title}
-              kicker={ch.kicker}
-              metric={ch.metric}
-              place={ch.place}
-              sculpture={ch.sculpture}
-              isLast={i === N - 1}
-              chips={ch.chips}
-              index={i}
-              scroll={scroll}
-              chapters={N}
-              // Monoliths face the walkway they flank; gates face down-path so
-              // the camera flies through them.
-              facing={config.id === 'projects'
-                ? waypoints[i]
-                : (waypoints[i + 1] ?? waypoints[i].clone().add(waypoints[i].clone().sub(waypoints[i - 1] ?? waypoints[i])))}
-            />
-          </group>
+          <CleanStation
+            key={i}
+            domainId={config.id}
+            position={stationPositions[i]}
+            accent={config.accent}
+            sculpture={ch.sculpture}
+            isLast={i === N - 1}
+            index={i}
+            scroll={scroll}
+            chapters={N}
+            facing={waypoints[i + 1] ?? waypoints[i].clone().add(waypoints[i].clone().sub(waypoints[i - 1] ?? waypoints[i]))}
+          />
         ))}
 
         <EffectComposer multisampling={0}>
-          <Bloom luminanceThreshold={0.22} luminanceSmoothing={0.9} intensity={1.25} radius={0.55} mipmapBlur />
-          <Noise opacity={0.035} />
-          <Vignette offset={0.32} darkness={0.85} />
+          <Bloom luminanceThreshold={0.3} luminanceSmoothing={0.9} intensity={0.85} radius={0.5} mipmapBlur />
+          <Noise opacity={0.02} />
+          <Vignette offset={0.3} darkness={0.82} />
         </EffectComposer>
       </Canvas>
 
@@ -880,7 +546,7 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
         </div>
       </div>
 
-      {/* ── Chapter cards ── */}
+      {/* ── Chapter cards — the single text layer ── */}
       {chapters.map((ch, i) => (
         <div
           key={i}
@@ -926,7 +592,7 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
         </motion.div>
       </div>
 
-      {/* ── Completion: a sequence report that hands off to the next strand ── */}
+      {/* ── Completion: sequence report → next strand ── */}
       <AnimatePresence>
         {showCompletion && (
           <motion.div
@@ -970,7 +636,6 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-8">
-                  {/* The whole genome has been read — quiet sign-off, no sales pitch */}
                   <div className="flex items-center gap-8">
                     <a href="https://github.com/vishal171104" target="_blank" rel="noopener noreferrer" title="GitHub">
                       <Github size={22} className="text-white/40 hover:text-white transition-colors" />
