@@ -7,6 +7,8 @@ export interface DiveChapter {
   body: string
   chips: string[]
   metric?: string     // highlighted stat shown next to the kicker
+  place?: string      // experience: company name for the 3D gate signage
+  sculpture?: 'cards' | 'dumbbell' | 'crates' | 'pin'  // projects: primitive totem
 }
 
 export interface DiveCompletion {
@@ -19,6 +21,7 @@ export interface DiveConfig {
   name: string        // top HUD pill
   accent: string
   path: 'helix' | 'road' | 'zigzag' | 'orbit'
+  intro: string       // giant 3D headline floating at the journey's start
   chapters: DiveChapter[]
   completion: DiveCompletion
 }
@@ -32,6 +35,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
     name: 'NEURAL DIVE',
     accent: '#38bdf8',
     path: 'helix',
+    intro: 'WHAT I WIELD',
     chapters: [
       {
         kicker: 'STRAND 01 — AI / ML',
@@ -75,10 +79,12 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
     name: 'TIMELINE RIDE',
     accent: '#a855f7',
     path: 'road',
+    intro: 'WHERE I’VE WORKED',
     chapters: [
       {
         kicker: '2026 — DIGIT7 INDIA',
         title: 'AI/ML Intern — Computer Vision',
+        place: 'DIGIT7',
         metric: 'CV evaluation',
         body: 'Evaluated annotation quality and model outputs for a cashierless retail CV system; designed protocols that surfaced occlusion failure modes invisible to aggregate metrics.',
         chips: ['Computer Vision', 'Model Evaluation', 'Python'],
@@ -86,6 +92,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
       {
         kicker: '2025 — SST CLOUD · NATIONAL RUGBY LEAGUE (AU)',
         title: 'Full-Stack Dev Intern',
+        place: 'SST · NRL',
         metric: 'Production APIs',
         body: 'Built scalable REST APIs in Node.js and Express; integrated React frontends for a live production system and resolved Level-2 issues via log-driven root-cause analysis.',
         chips: ['Node.js', 'Express.js', 'React.js'],
@@ -93,6 +100,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
       {
         kicker: '2024 — NUS SCHOOL OF COMPUTING',
         title: 'ML Academic Intern',
+        place: 'NUS',
         metric: '>60% variance',
         body: 'Built Ridge, Lasso and gradient-boosted models for profit-margin prediction across ~3,000 retail transactions — 3 engineered ratio features explained most of the variance.',
         chips: ['Python', 'Scikit-learn', 'Regression'],
@@ -100,6 +108,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
       {
         kicker: '2024 — GREENORANGE IT',
         title: 'Frontend Intern',
+        place: 'GREENORANGE',
         metric: '87% accuracy',
         body: 'Built Flutter mobile UI integrated with FastAPI backends; shipped ML-backed features reaching 87% model accuracy in production.',
         chips: ['Flutter', 'Dart', 'FastAPI'],
@@ -116,10 +125,12 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
     name: 'PROJECT FOUNDRY',
     accent: '#fbbf24',
     path: 'zigzag',
+    intro: 'WHAT I’VE BUILT',
     chapters: [
       {
         kicker: 'BLUEPRINT 01',
         title: 'AI Ticket Classifier',
+        sculpture: 'cards',
         metric: '96.5% acc · F1 0.96',
         body: 'End-to-end NLP pipeline benchmarking TF-IDF, SVM, DistilBERT & Sentence-BERT across 555 curated tickets — deployed with confidence-based human-in-the-loop routing.',
         chips: ['Python', 'FastAPI', 'DistilBERT', 'Sentence-BERT'],
@@ -127,6 +138,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
       {
         kicker: 'BLUEPRINT 02',
         title: 'RankGym',
+        sculpture: 'dumbbell',
         metric: 'E→S rank RPG',
         body: 'A full iOS fitness app that turns training into an RPG — daily quests, XP, streaks and rank progression, synced to Apple HealthKit with fully local data.',
         chips: ['Next.js 15', 'TypeScript', 'Capacitor', 'HealthKit'],
@@ -134,6 +146,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
       {
         kicker: 'BLUEPRINT 03',
         title: 'MaligaiKadai',
+        sculpture: 'crates',
         metric: 'Live inventory',
         body: 'Retail management system with normalised schemas for products, suppliers and transactions — automated invoicing and real-time inventory reconciliation.',
         chips: ['React.js', 'FastAPI', 'MongoDB'],
@@ -141,6 +154,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
       {
         kicker: 'BLUEPRINT 04',
         title: 'Vehicle Tracking',
+        sculpture: 'pin',
         metric: 'Real-time telemetry',
         body: 'Logistics dashboard wiring real-time backend APIs into interactive visualisations — modular pipeline design under latency constraints.',
         chips: ['React.js', 'Node.js', 'REST APIs'],
@@ -157,6 +171,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
     name: 'ACADEMIC CORE',
     accent: '#22c55e',
     path: 'orbit',
+    intro: 'HOW I GOT HERE',
     chapters: [
       {
         kicker: '2022 → 2026 — VIT VELLORE',
