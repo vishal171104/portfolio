@@ -392,7 +392,7 @@ const App: React.FC = () => {
         {/* RECRUITER HUD */}
         <nav className="fixed top-4 right-4 md:top-8 md:right-8 z-[100] flex gap-2 md:gap-4 pointer-events-auto">
             {[
-                { label: 'Resume', icon: Activity, href: '/Vishal_S_I_Resume.pdf', download: true },
+                { label: 'Resume', icon: Activity, href: 'Vishal_S_I_Resume.pdf', download: true },
                 { label: 'GitHub', icon: Github, href: 'https://github.com/vishal171104' }
             ].map(link => (
                 <Magnetic key={link.label} strength={0.35}>

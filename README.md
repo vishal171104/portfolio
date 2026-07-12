@@ -1,6 +1,6 @@
 # Vishal S I — Interactive 3D Portfolio
 
-**Live:** https://vishal171104.github.io/
+**Live:** https://vishal171104.github.io/portfolio/
 
 A portfolio built as a genome. The landing page presents a 3D DNA helix; hitting
 **Decode My Genome** scans it into four strands — Skills, Experience, Projects,
