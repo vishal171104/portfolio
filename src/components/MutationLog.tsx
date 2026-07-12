@@ -31,7 +31,7 @@ const BOOT_SEQUENCE: Array<{ delay: number; text: string; color: string }> = [
   { delay: 7100, text: '  >> RankGym       — Gamified iOS Fitness [VERIFIED]',    color: '#fbbf24' },
   { delay: 7400, text: '  >> MaligaiKadai  — Retail Management    [VERIFIED]',    color: '#fbbf24' },
   { delay: 7900, text: '> INTEGRITY_CHECK: running genome tests...',              color: '#38bdf8' },
-  { delay: 8200, text: '  >> 24 skill_modules loaded ........... [OK]',           color: '#22c55e' },
+  { delay: 8200, text: '  >> 27 skill_modules loaded ........... [OK]',           color: '#22c55e' },
   { delay: 8500, text: '  >> 4  internship_nodes persisted ...... [OK]',          color: '#22c55e' },
   { delay: 8800, text: '  >> 12 project_blueprints verified ..... [OK]',          color: '#22c55e' },
   { delay: 9200, text: '> ──────────────────────────────────────────────────',    color: '#38bdf8' },

@@ -38,9 +38,9 @@ const DOMAINS = [
     },
     stats: { count: 24, label: 'Techs' },
     details: [
-        { label: 'AI/ML', value: 'NLP, Computer Vision, DistilBERT' },
-        { label: 'Full-Stack', value: 'React, Next.js, Node, FastAPI' },
-        { label: 'Languages', value: 'Python, JS, Java, C++, Dart' }
+        { label: 'AI / ML', value: 'NLP · Computer Vision · DistilBERT' },
+        { label: 'Frontend', value: 'React · Next.js · Flutter' },
+        { label: 'Backend', value: 'Python / FastAPI · Node / Express' }
     ]
   },
   {
@@ -77,7 +77,7 @@ const DOMAINS = [
     subtitle:'Academic Base',
     directive: {
         title: "Establishing the foundation of computational intelligence.",
-        desc: "Mastering the fundamentals of computer science and specialized intelligent systems."
+        desc: "Mastering the fundamentals of computer science and applied machine learning."
     },
     stats: { count: 7.57, label: 'CGPA' },
     details: [
@@ -158,12 +158,15 @@ const DIVE_CTA: Record<string, string> = {
   education: '🎓 Visit the Core',
 }
 
+// Grouped so the two backend ecosystems never blur: Python (FastAPI) and
+// JavaScript (Node/Express) are separate, labelled categories.
 const SKILLS_TECH = [
-  { category: 'AI ∕ ML',         color: '#38bdf8', skills: ['NLP', 'Computer Vision', 'DistilBERT', 'Scikit-learn', 'TF-IDF', 'SVM'] },
-  { category: 'Frontend',        color: '#22c55e', skills: ['React.js', 'Next.js', 'TypeScript', 'Flutter', 'Tailwind', 'Framer Motion'] },
-  { category: 'Backend',         color: '#a855f7', skills: ['Node.js', 'Express.js', 'FastAPI', 'REST APIs', 'Firebase'] },
-  { category: 'Languages',       color: '#fbbf24', skills: ['Python', 'JavaScript', 'Java', 'C++', 'Dart', 'SQL'] },
-  { category: 'Cloud ∕ DevOps',  color: '#f87171', skills: ['AWS SageMaker', 'Docker', 'Git', 'MongoDB', 'Supabase'] },
+  { category: 'AI ∕ ML',          color: '#38bdf8', skills: ['NLP', 'Computer Vision', 'DistilBERT', 'Scikit-learn', 'TF-IDF', 'SVM'] },
+  { category: 'Frontend & Mobile', color: '#22c55e', skills: ['React.js', 'Next.js', 'TypeScript', 'Tailwind', 'Framer Motion', 'Flutter'] },
+  { category: 'Backend · Python', color: '#a855f7', skills: ['FastAPI', 'REST APIs'] },
+  { category: 'Backend · Node',   color: '#818cf8', skills: ['Node.js', 'Express.js'] },
+  { category: 'Languages',        color: '#fbbf24', skills: ['Python', 'JavaScript', 'Java', 'C++', 'Dart'] },
+  { category: 'Cloud & Data',     color: '#f87171', skills: ['AWS SageMaker', 'Docker', 'Git', 'MongoDB', 'Supabase', 'Firebase', 'SQL'] },
 ]
 
 // Pulls its child toward the cursor while hovered and springs back on leave.

@@ -44,28 +44,28 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
         chips: ['NLP', 'Computer Vision', 'DistilBERT', 'Scikit-learn', 'TF-IDF', 'SVM'],
       },
       {
-        kicker: 'STRAND 02 — FRONTEND',
+        kicker: 'STRAND 02 — FRONTEND & MOBILE',
         title: 'Interfaces with physics',
-        body: 'Interactive UI engineering across web and mobile — including the 3D site you are inside right now.',
+        body: 'Interactive UI engineering across web and mobile — React and Next.js on the web, Flutter on mobile, including the 3D site you are inside right now.',
         chips: ['React.js', 'Next.js', 'TypeScript', 'Flutter', 'Tailwind', 'Framer Motion'],
       },
       {
         kicker: 'STRAND 03 — BACKEND',
-        title: 'APIs under real load',
-        body: 'REST services built, shipped and debugged in production for live client systems.',
-        chips: ['Node.js', 'Express.js', 'FastAPI', 'REST APIs', 'Firebase'],
+        title: 'Two ecosystems, one API discipline',
+        body: 'REST backends in both stacks I reach for — FastAPI on Python, Node.js with Express on JavaScript — built, shipped and debugged in production for live client systems.',
+        chips: ['Python · FastAPI', 'Node.js · Express', 'REST APIs', 'Firebase'],
       },
       {
         kicker: 'STRAND 04 — LANGUAGES',
         title: 'Polyglot core',
         body: 'Five languages across ML pipelines, systems and mobile — picked per problem, not per habit.',
-        chips: ['Python', 'JavaScript', 'Java', 'C++', 'Dart', 'SQL'],
+        chips: ['Python', 'JavaScript', 'Java', 'C++', 'Dart'],
       },
       {
-        kicker: 'STRAND 05 — CLOUD / DEVOPS',
+        kicker: 'STRAND 05 — CLOUD & DATA',
         title: 'Ship it properly',
         body: 'Containerised, versioned, deployed — with log-driven debugging when production disagrees with the plan.',
-        chips: ['AWS SageMaker', 'Docker', 'Git', 'MongoDB', 'Supabase'],
+        chips: ['AWS SageMaker', 'Docker', 'Git', 'MongoDB', 'Supabase', 'SQL'],
       },
     ],
     completion: {
@@ -162,7 +162,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
     ],
     completion: {
       headline: 'Blueprints Verified',
-      sub: '4 builds shipped · 96.5% peak accuracy · zero vaporware',
+      sub: '4 flagship builds · 96.5% peak accuracy · zero vaporware',
     },
   },
 
@@ -175,9 +175,9 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
     chapters: [
       {
         kicker: '2022 → 2026 — VIT VELLORE',
-        title: 'B.Tech Computer Science',
+        title: 'B.Tech Computer Science & Engineering',
         metric: 'CGPA 7.57',
-        body: 'Core computer science with a focus on intelligent systems — the theoretical spine behind every model and API in this genome.',
+        body: 'Core computer science and engineering — the theoretical spine behind every model and API in this genome.',
         chips: ['CSE', 'CGPA 7.57', '2022–2026'],
       },
       {
