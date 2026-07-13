@@ -585,7 +585,7 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
       {/* ── Scroll hint ── */}
       <div ref={hintRef} className="absolute bottom-28 md:bottom-10 left-1/2 -translate-x-1/2 z-[105] flex flex-col items-center gap-2 transition-opacity duration-700 pointer-events-none">
         <span className="text-[0.45rem] md:text-[0.6rem] font-black tracking-[0.4em] md:tracking-[0.6em] uppercase text-white/50">
-          Scroll to descend
+          Scroll to explore
         </span>
         <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}>
           <ChevronDown size={18} style={{ color: config.accent }} />
@@ -608,7 +608,7 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
               className="text-center px-6 max-w-xl"
             >
               <p className="text-[0.55rem] md:text-[0.65rem] font-black tracking-[0.5em] uppercase mb-4" style={{ color: config.accent }}>
-                &gt; sequence report
+                Summary
               </p>
               <h2 className="text-3xl md:text-5xl font-black tracking-tighter uppercase mb-3 text-transparent bg-clip-text" style={{ backgroundImage: `linear-gradient(90deg, #fff, ${config.accent})` }}>
                 {config.completion.headline}
@@ -624,14 +624,14 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
                     className="group px-9 py-4 rounded-full text-black hover:bg-white transition-colors font-black tracking-[0.3em] uppercase text-[0.68rem] flex items-center gap-3"
                     style={{ background: config.accent }}
                   >
-                    Next strand — {nextName}
+                    Next: {nextName}
                     <span className="transition-transform group-hover:translate-x-1">▸</span>
                   </button>
                   <button
                     onClick={onBack}
                     className="px-9 py-4 rounded-full border border-white/20 hover:bg-white hover:text-black transition-colors font-black tracking-[0.3em] uppercase text-[0.68rem]"
                   >
-                    Return to DNA
+                    Back
                   </button>
                 </div>
               ) : (
@@ -654,7 +654,7 @@ const DeepDive: React.FC<DeepDiveProps> = ({ domain, onBack, onNext }) => {
                     onClick={onBack}
                     className="px-9 py-4 rounded-full border border-white/20 hover:bg-white hover:text-black transition-colors font-black tracking-[0.3em] uppercase text-[0.68rem]"
                   >
-                    Return to DNA
+                    Back
                   </button>
                 </div>
               )}

@@ -32,51 +32,51 @@ export const DIVE_ORDER: Array<DiveConfig['id']> = ['skills', 'experience', 'pro
 export const DEEP_DIVES: Record<string, DiveConfig> = {
   skills: {
     id: 'skills',
-    name: 'NEURAL DIVE',
+    name: 'SKILLS',
     accent: '#38bdf8',
     path: 'helix',
-    intro: 'WHAT I WIELD',
+    intro: 'WHAT I WORK WITH',
     chapters: [
       {
-        kicker: 'STRAND 01 — AI / ML',
+        kicker: '01 · AI / ML',
         title: 'Models that survive production',
         body: 'From transformer fine-tuning to evaluation design — models measured by real-world failure modes, not just benchmark scores.',
         chips: ['NLP', 'Computer Vision', 'DistilBERT', 'Scikit-learn', 'TF-IDF', 'SVM'],
       },
       {
-        kicker: 'STRAND 02 — FRONTEND & MOBILE',
+        kicker: '02 · FRONTEND & MOBILE',
         title: 'Interfaces with physics',
         body: 'Interactive UI engineering across web and mobile — React and Next.js on the web, Flutter on mobile, including the 3D site you are inside right now.',
         chips: ['React.js', 'Next.js', 'TypeScript', 'Flutter', 'Tailwind', 'Framer Motion'],
       },
       {
-        kicker: 'STRAND 03 — BACKEND',
+        kicker: '03 · BACKEND',
         title: 'Two ecosystems, one API discipline',
         body: 'REST backends in both stacks I reach for — FastAPI on Python, Node.js with Express on JavaScript — built, shipped and debugged in production for live client systems.',
         chips: ['Python · FastAPI', 'Node.js · Express', 'REST APIs', 'Firebase'],
       },
       {
-        kicker: 'STRAND 04 — LANGUAGES',
+        kicker: '04 · LANGUAGES',
         title: 'Polyglot core',
         body: 'Five languages across ML pipelines, systems and mobile — picked per problem, not per habit.',
         chips: ['Python', 'JavaScript', 'Java', 'C++', 'Dart'],
       },
       {
-        kicker: 'STRAND 05 — CLOUD & DATA',
+        kicker: '05 · CLOUD & DATA',
         title: 'Ship it properly',
         body: 'Containerised, versioned, deployed — with log-driven debugging when production disagrees with the plan.',
         chips: ['AWS SageMaker', 'Docker', 'Git', 'MongoDB', 'Supabase', 'SQL'],
       },
     ],
     completion: {
-      headline: 'Strand Stable',
-      sub: '27 skill modules compiled · 0 conflicts detected',
+      headline: 'That’s My Toolkit',
+      sub: '27 technologies across 6 areas',
     },
   },
 
   experience: {
     id: 'experience',
-    name: 'TIMELINE RIDE',
+    name: 'EXPERIENCE',
     accent: '#a855f7',
     path: 'road',
     intro: 'WHERE I’VE WORKED',
@@ -115,14 +115,14 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
       },
     ],
     completion: {
-      headline: 'Evolution Logged',
-      sub: '4 internships · 2024 → 2026 · all production-tested',
+      headline: 'That’s My Path',
+      sub: '4 internships · 2024–2026 · all real production work',
     },
   },
 
   projects: {
     id: 'projects',
-    name: 'PROJECT FOUNDRY',
+    name: 'PROJECTS',
     accent: '#fbbf24',
     path: 'zigzag',
     intro: 'WHAT I’VE BUILT',
@@ -161,14 +161,14 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
       },
     ],
     completion: {
-      headline: 'Blueprints Verified',
-      sub: '4 flagship builds · 96.5% peak accuracy · zero vaporware',
+      headline: 'That’s My Work',
+      sub: '4 flagship builds · 96.5% peak accuracy · all shipped',
     },
   },
 
   education: {
     id: 'education',
-    name: 'ACADEMIC CORE',
+    name: 'EDUCATION',
     accent: '#22c55e',
     path: 'orbit',
     intro: 'HOW I GOT HERE',
@@ -177,7 +177,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
         kicker: '2022 → 2026 — VIT VELLORE',
         title: 'B.Tech Computer Science & Engineering',
         metric: 'CGPA 7.57',
-        body: 'Core computer science and engineering — the theoretical spine behind every model and API in this genome.',
+        body: 'Core computer science and engineering — the theoretical spine behind every model and API in my work.',
         chips: ['CSE', 'CGPA 7.57', '2022–2026'],
       },
       {
@@ -196,7 +196,7 @@ export const DEEP_DIVES: Record<string, DiveConfig> = {
       },
     ],
     completion: {
-      headline: 'Genome Fully Sequenced',
+      headline: 'That’s My Foundation',
       sub: 'B.Tech CSE · CGPA 7.57 · NUS + AWS certified',
     },
   },
