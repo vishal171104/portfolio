@@ -65,7 +65,7 @@ const DOMAINS = [
         title: "Architecture for tomorrow, built today.",
         desc: "Engineering robust full-stack solutions with a focus on user-centric design and performance."
     },
-    stats: { count: 12, label: 'Built' },
+    stats: { count: 4, label: 'Built' },
     details: [
         { label: 'TicketAI', value: 'NLP Support Classifier — 96.5%' },
         { label: 'RankGym', value: 'Gamified iOS Fitness App' },
@@ -601,7 +601,7 @@ const App: React.FC = () => {
 
                     <div className="flex gap-3 md:gap-16 flex-1 justify-center shrink-0">
                         {[
-                            { label: 'Built', value: '12', icon: Database },
+                            { label: 'Built', value: '04', icon: Database },
                             { label: 'Internships', value: '04', icon: Cpu },
                             { label: 'CGPA', value: '7.57', icon: Activity },
                             { label: 'Coding', value: '4Y', icon: Terminal }

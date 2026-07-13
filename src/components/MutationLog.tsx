@@ -33,7 +33,7 @@ const BOOT_SEQUENCE: Array<{ delay: number; text: string; color: string }> = [
   { delay: 7900, text: '> INTEGRITY_CHECK: running genome tests...',              color: '#38bdf8' },
   { delay: 8200, text: '  >> 27 skill_modules loaded ........... [OK]',           color: '#22c55e' },
   { delay: 8500, text: '  >> 4  internship_nodes persisted ...... [OK]',          color: '#22c55e' },
-  { delay: 8800, text: '  >> 12 project_blueprints verified ..... [OK]',          color: '#22c55e' },
+  { delay: 8800, text: '  >> 04 project_blueprints verified ..... [OK]',          color: '#22c55e' },
   { delay: 9200, text: '> ──────────────────────────────────────────────────',    color: '#38bdf8' },
   { delay: 9600, text: '> GENOME_STABLE — READY FOR DEPLOYMENT ✓',               color: '#38bdf8' },
 ]
