@@ -6,7 +6,7 @@ import { Bloom, EffectComposer, Vignette, Noise } from '@react-three/postprocess
 import * as THREE from 'three'
 import { 
   Code2, BrainCircuit, Layers, GraduationCap, X, 
-  Terminal, Activity, ShieldCheck, Database, Cpu, Mail, Github, ArrowLeft, Linkedin
+  Terminal, Activity, ShieldCheck, Database, Cpu, Mail, Github, ArrowLeft, Linkedin, MousePointerClick
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Universe from './components/ThreeScene/Universe'
@@ -31,7 +31,7 @@ const useIsMobile = () => {
 const DOMAINS = [
   {
     id:'skills', label:'Skills', color:'#38bdf8', icon: Code2,
-    subtitle:'Technical genome',
+    subtitle:'Languages & Tools',
     directive: {
         title: "Encoding intelligence into scalable architecture.",
         desc: "Transforming complex logic into high-performance, maintainable software systems."
@@ -45,7 +45,7 @@ const DOMAINS = [
   },
   {
     id:'experience', label:'Experience', color:'#a855f7', icon: Layers,
-    subtitle:'Evolutionary Path',
+    subtitle:'Internships & Roles',
     directive: {
         title: "Navigating the frontier of applied research.",
         desc: "Bridging the gap between theoretical machine learning and production-ready applications."
@@ -60,7 +60,7 @@ const DOMAINS = [
   },
   {
     id:'projects', label:'Projects', color:'#fbbf24', icon: BrainCircuit,
-    subtitle:'Manifested Code',
+    subtitle:'Selected Work',
     directive: {
         title: "Architecture for tomorrow, built today.",
         desc: "Engineering robust full-stack solutions with a focus on user-centric design and performance."
@@ -74,7 +74,7 @@ const DOMAINS = [
   },
   {
     id:'education', label:'Education', color:'#22c55e', icon: GraduationCap,
-    subtitle:'Academic Base',
+    subtitle:'Degree & Certifications',
     directive: {
         title: "Establishing the foundation of computational intelligence.",
         desc: "Mastering the fundamentals of computer science and applied machine learning."
@@ -151,11 +151,12 @@ const EXPERIENCE_TIMELINE = [
 
 // Per-domain label for the detail panel's launch button — every domain now has
 // its own scroll-driven Deep Dive cinematic.
+// The detail panel's button that launches the immersive 3D walkthrough.
 const DIVE_CTA: Record<string, string> = {
-  skills: '🧬 Launch Neural Dive',
-  experience: '🚀 Ride the Timeline',
-  projects: '⚙️ Enter the Foundry',
-  education: '🎓 Visit the Core',
+  skills: 'Explore Skills in 3D',
+  experience: 'Explore Experience in 3D',
+  projects: 'Explore Projects in 3D',
+  education: 'Explore Education in 3D',
 }
 
 // Grouped so the two backend ecosystems never blur: Python (FastAPI) and
@@ -274,7 +275,22 @@ const App: React.FC = () => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [scrollProgress, setScrollProgress] = useState(0)
   const [showTerminal, setShowTerminal] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)   // one-time nav hint in the decoded view
+  const guideShownRef = useRef(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const isMobileHint = useIsMobile()
+
+  // Show the "how to navigate" hint once the sections first appear, then fade
+  // it after 8s. It also disappears the instant a section is opened, since it
+  // only renders while viewStage === 'decoded'.
+  useEffect(() => {
+    if (viewStage === 'decoded' && !guideShownRef.current) {
+      guideShownRef.current = true
+      setShowGuide(true)
+      const t = setTimeout(() => setShowGuide(false), 8000)
+      return () => clearTimeout(t)
+    }
+  }, [viewStage])
 
   useEffect(() => {
     const handleMouse = (e: MouseEvent) => {
@@ -314,13 +330,12 @@ const App: React.FC = () => {
     setViewStage('scanning')
     setScanLogs([])
     const logs = [
-      "ESTABLISHING NEURAL LINK...",
-      "SCANNING GENOME STRANDS...",
-      "BLUE: SKILL MODULES IDENTIFIED",
-      "PURPLE: EXPERIENCE NODES PERSISTED",
-      "GOLD: PROJECT BLUEPRINTS VERIFIED",
-      "GREEN: ACADEMIC CORE STABLE",
-      "GENOME DECODED - AXIS LOCKED"
+      "Loading portfolio…",
+      "Skills — ready",
+      "Experience — ready",
+      "Projects — ready",
+      "Education — ready",
+      "Welcome"
     ]
     logs.forEach((log, i) => {
       setTimeout(() => {
@@ -416,9 +431,10 @@ const App: React.FC = () => {
                     transition={{ duration: 1, ease: "easeOut" }}
                     className="flex flex-col items-center pointer-events-auto pt-20 md:pt-0 px-2"
                 >
-                    <div className="mb-4 md:mb-6 px-4 md:px-6 py-1.5 md:py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-center">
-                        <p className="text-[0.45rem] md:text-[0.6rem] font-black tracking-[0.3em] md:tracking-[0.5em] text-primary uppercase animate-pulse">
-                            System Ready for Analysis
+                    <div className="mb-4 md:mb-6 px-4 md:px-6 py-1.5 md:py-2 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-md text-center flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                        <p className="text-[0.45rem] md:text-[0.6rem] font-black tracking-[0.3em] md:tracking-[0.4em] text-primary uppercase">
+                            Open to SDE &amp; ML Engineer Roles
                         </p>
                     </div>
                     <h1
@@ -429,8 +445,8 @@ const App: React.FC = () => {
                     >
                         <DecodeText text="VISHAL S I" />
                     </h1>
-                    <p className="mt-4 md:mt-8 text-sm md:text-xl font-serif italic text-white/40 tracking-[0.2em] md:tracking-[0.3em] text-center">
-                        Encoded in My DNA
+                    <p className="mt-4 md:mt-8 text-sm md:text-xl font-serif italic text-white/50 tracking-[0.2em] md:tracking-[0.3em] text-center">
+                        Full-Stack Engineer · AI / ML
                     </p>
 
                     <Magnetic strength={0.22} className="mt-10 md:mt-20">
@@ -439,8 +455,8 @@ const App: React.FC = () => {
                             className="group relative py-4 px-10 md:py-6 md:px-20 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-xl transition-all hover:bg-primary/20 hover:border-primary/40 active:scale-95 shadow-[0_0_50px_rgba(56,189,248,0.1)]"
                         >
                             <div className="absolute inset-0 rounded-full blur-2xl bg-primary/20 group-hover:bg-primary/40 transition-all" />
-                            <span className="relative text-xs md:text-sm font-black tracking-[0.3em] md:tracking-[0.5em] text-primary transition-all group-hover:tracking-[0.7em] uppercase">
-                                Decode My Genome
+                            <span className="relative text-xs md:text-sm font-black tracking-[0.3em] md:tracking-[0.5em] text-primary transition-all group-hover:tracking-[0.6em] uppercase">
+                                Explore My Work
                             </span>
                         </button>
                     </Magnetic>
@@ -448,17 +464,15 @@ const App: React.FC = () => {
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 2 }}
-                        className="mt-10 md:mt-20 flex flex-col items-center gap-3 md:gap-4 text-white/20 select-none"
+                        transition={{ delay: 1.6 }}
+                        className="mt-6 md:mt-10 flex items-center gap-2 text-white/30 select-none"
                     >
-                        <div className="w-1 h-10 md:h-12 rounded-full bg-gradient-to-b from-primary/20 to-transparent relative overflow-hidden">
-                            <motion.div
-                                animate={{ y: [0, 48, 0] }}
-                                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                                className="w-full h-1/3 bg-primary/40 rounded-full"
-                            />
-                        </div>
-                        <span className="text-[0.45rem] md:text-[0.5rem] font-black tracking-[0.3em] md:tracking-[0.5em] uppercase">Scroll to Sequence</span>
+                        <motion.span
+                            animate={{ y: [0, -4, 0] }}
+                            transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                            className="text-primary/60 text-xs"
+                        >↑</motion.span>
+                        <span className="text-[0.45rem] md:text-[0.55rem] font-black tracking-[0.3em] md:tracking-[0.4em] uppercase">Click the button to begin</span>
                     </motion.div>
 
                     <div className="mt-12 md:mt-24 flex gap-8 md:gap-12 pointer-events-auto">
@@ -470,12 +484,12 @@ const App: React.FC = () => {
                         </a>
                         <button
                             onClick={() => setShowTerminal(true)}
-                            title="Open Mutation Log"
+                            title="Open terminal"
                             className="group relative"
                         >
                             <Terminal size={20} className="text-white/20 hover:text-[#38bdf8] transition-all group-hover:drop-shadow-[0_0_8px_#38bdf8] cursor-pointer" />
                             <span className="absolute -top-7 left-1/2 -translate-x-1/2 text-[0.45rem] font-black tracking-[0.3em] uppercase text-white/40 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                Mutation Log
+                                Terminal
                             </span>
                         </button>
                         <a href="mailto:vishal171104@gmail.com">
@@ -544,7 +558,28 @@ const App: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      {/* ── GENOME STATISTICS HUD ── */}
+      {/* ── NAVIGATION HINT (shown briefly when sections first appear) ── */}
+      <AnimatePresence>
+        {viewStage === 'decoded' && showGuide && (
+            <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                className="fixed top-20 md:top-24 left-1/2 -translate-x-1/2 z-[90] pointer-events-none px-4"
+            >
+                <div className="px-4 py-2 md:px-6 md:py-2.5 rounded-full border border-white/10 bg-black/70 backdrop-blur-xl flex items-center gap-2.5 shadow-xl">
+                    <MousePointerClick size={13} className="text-primary shrink-0" />
+                    <p className="text-[0.5rem] md:text-[0.62rem] font-bold tracking-[0.15em] md:tracking-[0.2em] uppercase text-white/70 whitespace-nowrap">
+                        {isMobileHint
+                            ? 'Tap a section to open it'
+                            : 'Click a section to open it · scroll inside the 3D views to travel'}
+                    </p>
+                </div>
+            </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── STATS HUD ── */}
       <AnimatePresence>
         {viewStage !== 'scanning' && (
             <motion.div
@@ -559,8 +594,8 @@ const App: React.FC = () => {
                             <ShieldCheck size={24} className="text-primary hidden md:block" />
                         </div>
                         <div>
-                            <p className="text-[0.45rem] md:text-[0.6rem] font-black tracking-widest text-primary uppercase mb-0.5 md:mb-1">Status</p>
-                            <p className="text-[0.6rem] md:text-lg font-mono text-white/90 whitespace-nowrap">GENOME_STABLE_V4.2</p>
+                            <p className="text-[0.45rem] md:text-[0.6rem] font-black tracking-widest text-primary uppercase mb-0.5 md:mb-1">Availability</p>
+                            <p className="text-[0.6rem] md:text-lg font-mono text-white/90 whitespace-nowrap">OPEN TO WORK</p>
                         </div>
                     </div>
 
@@ -636,7 +671,7 @@ const App: React.FC = () => {
                                                 {domain.label}
                                             </h2>
                                             <p className="text-[0.6rem] md:text-sm font-serif italic text-white/30 tracking-[0.2em] md:tracking-[0.4em] uppercase">
-                                                Sequence Manifest DECODE_0{DOMAINS.indexOf(domain) + 1}
+                                                {domain.subtitle}
                                             </p>
                                         </div>
                                     </div>
@@ -776,7 +811,7 @@ const App: React.FC = () => {
                                         transition={{ delay: 0.3 }}
                                         className="p-6 md:p-12 rounded-[1.5rem] md:rounded-[3.5rem] border border-white/10 bg-gradient-to-br from-white/5 to-transparent backdrop-blur-sm"
                                     >
-                                        <p className="text-[0.55rem] md:text-[0.7rem] font-black tracking-[0.4em] md:tracking-[0.6em] text-white/30 uppercase mb-3 md:mb-6 leading-none">Prime Directive</p>
+                                        <p className="text-[0.55rem] md:text-[0.7rem] font-black tracking-[0.4em] md:tracking-[0.6em] text-white/30 uppercase mb-3 md:mb-6 leading-none">Focus</p>
                                         <h4 className="text-xl md:text-3xl font-black mb-3 md:mb-6 leading-tight">{domain.directive.title}</h4>
                                         <p className="text-sm md:text-lg text-white/40 leading-relaxed font-serif italic">
                                             {domain.directive.desc}
@@ -924,7 +959,7 @@ const ModuleCard = ({ domain, activeDomain, setViewStage, setActiveDomain, scrol
                 }}
                 className="mt-6 md:mt-10 w-full py-3 md:py-4 rounded-2xl border border-white/5 bg-white/5 text-[0.55rem] md:text-[0.6rem] font-black tracking-[0.3em] md:tracking-[0.5em] uppercase hover:bg-white hover:text-black transition-all"
             >
-                View Sequence
+                View Details
             </motion.button>
             </div>{/* end float wrapper */}
         </motion.div>
